@@ -16,6 +16,7 @@ zcash_address.workspace = true
 zcash_proofs.workspace = true
 zcash_keys.workspace = true
 zcash_transparent.workspace = true
+zcash_primitives.workspace = true
 
 # gRPC
 tonic.workspace = true
@@ -26,6 +27,7 @@ rustls.workspace = true
 bip0039.workspace = true
 rand.workspace = true
 rand_core.workspace = true
+zip32.workspace = true
 
 # Storage
 rusqlite.workspace = true
