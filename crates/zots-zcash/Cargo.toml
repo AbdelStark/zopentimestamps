@@ -1,0 +1,42 @@
+[package]
+name = "zots-zcash"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Zcash integration for zOpenTimestamps - wallet, transactions, lightwalletd"
+
+[dependencies]
+zots-core = { path = "../zots-core" }
+
+# Zcash
+zcash_client_backend.workspace = true
+zcash_client_sqlite.workspace = true
+zcash_protocol.workspace = true
+zcash_address.workspace = true
+zcash_proofs.workspace = true
+zcash_keys.workspace = true
+zcash_transparent.workspace = true
+
+# gRPC
+tonic.workspace = true
+prost.workspace = true
+rustls.workspace = true
+
+# Crypto
+bip0039.workspace = true
+rand.workspace = true
+rand_core.workspace = true
+
+# Storage
+rusqlite.workspace = true
+
+# Async
+tokio.workspace = true
+
+# Other
+thiserror.workspace = true
+anyhow.workspace = true
+time.workspace = true
+chrono.workspace = true
+dotenvy.workspace = true
+dirs.workspace = true

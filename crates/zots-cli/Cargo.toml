@@ -1,0 +1,33 @@
+[package]
+name = "zots-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "CLI application for zOpenTimestamps - Zcash blockchain timestamping"
+
+[[bin]]
+name = "zots"
+path = "src/main.rs"
+
+[dependencies]
+zots-core = { path = "../zots-core" }
+zots-zcash = { path = "../zots-zcash" }
+
+# CLI
+clap.workspace = true
+dotenvy.workspace = true
+
+# TUI
+ratatui.workspace = true
+crossterm.workspace = true
+
+# Output
+colored.workspace = true
+indicatif.workspace = true
+
+# Async
+tokio.workspace = true
+
+# Other
+anyhow.workspace = true
+chrono.workspace = true

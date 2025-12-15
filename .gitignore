@@ -1,0 +1,34 @@
+# Build artifacts
+/target/
+**/*.rs.bk
+
+# Cargo lock (recommended for libraries, keep for binaries)
+# Cargo.lock
+
+# Environment files with secrets
+.env
+.env.local
+
+# Proof files (binary)
+*.zots
+
+# Wallet database
+wallet.db
+wallet.db-shm
+wallet.db-wal
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+
+# Test artifacts
+*.log

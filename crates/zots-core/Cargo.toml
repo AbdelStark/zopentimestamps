@@ -1,0 +1,12 @@
+[package]
+name = "zots-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Core library for zOpenTimestamps - hashing, proof format, verification"
+
+[dependencies]
+sha2.workspace = true
+hex.workspace = true
+thiserror.workspace = true
+chrono.workspace = true
