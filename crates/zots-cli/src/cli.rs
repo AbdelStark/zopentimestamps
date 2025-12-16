@@ -77,7 +77,4 @@ pub enum WalletCommands {
 
     /// Show wallet info (height, balance, address)
     Info,
-
-    /// Debug: Show addresses for multiple account indices (helps diagnose derivation mismatches)
-    Debug,
 }

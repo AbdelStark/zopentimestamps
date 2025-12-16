@@ -92,20 +92,3 @@ pub async fn info() -> anyhow::Result<()> {
 
     Ok(())
 }
-
-pub async fn debug() -> anyhow::Result<()> {
-    print_header("Wallet Debug - Address Derivation");
-
-    let config = ZcashConfig::from_env()?;
-    let wallet = ZotsWallet::new(config).await?;
-
-    wallet.debug_show_all_accounts()?;
-
-    println!();
-    print_status("If none of these match Zingo's addresses, check:");
-    println!("  1. Is the seed phrase identical (including word order)?");
-    println!("  2. Is Zingo using a BIP-39 passphrase?");
-    println!("  3. Is Zingo in testnet mode?");
-
-    Ok(())
-}

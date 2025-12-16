@@ -30,7 +30,6 @@ async fn main() -> anyhow::Result<()> {
             WalletCommands::Balance => commands::wallet::balance().await,
             WalletCommands::Address => commands::wallet::address().await,
             WalletCommands::Info => commands::wallet::info().await,
-            WalletCommands::Debug => commands::wallet::debug().await,
         },
         Commands::Tui => tui::run().await,
     }
