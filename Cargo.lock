@@ -532,7 +532,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "117725a109d387c937a1533ce01b450cbde6b88abceea8473c4d7a85853cda3c"
 dependencies = [
  "lazy_static",
- "windows-sys 0.59.0",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]
@@ -3185,6 +3185,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "wasm_sync"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cff360cade7fec41ff0e9d2cda57fe58258c5f16def0e21302394659e6bbb0ea"
+dependencies = [
+ "js-sys",
+ "wasm-bindgen",
+ "web-sys",
+]
+
+[[package]]
+name = "web-sys"
+version = "0.3.83"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9b32828d774c412041098d182a8b38b16ea816958e07cf40eec2bc080ae137ac"
+dependencies = [
+ "js-sys",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "web-time"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3608,6 +3629,47 @@ dependencies = [
 ]
 
 [[package]]
+name = "zcash_client_memory"
+version = "0.0.0"
+source = "git+https://github.com/zcash/librustzcash.git?rev=9f47de6#9f47de607641068813d3768a893fda822c93041b"
+dependencies = [
+ "async-trait",
+ "bip32",
+ "bs58",
+ "byteorder",
+ "bytes",
+ "group",
+ "incrementalmerkletree",
+ "jubjub",
+ "nonempty",
+ "prost",
+ "prost-build",
+ "rayon",
+ "sapling-crypto",
+ "secp256k1",
+ "secrecy",
+ "serde",
+ "shardtree",
+ "static_assertions",
+ "subtle",
+ "thiserror 1.0.69",
+ "time",
+ "tokio",
+ "tracing",
+ "wasm_sync",
+ "which",
+ "zcash_address",
+ "zcash_client_backend",
+ "zcash_encoding",
+ "zcash_keys",
+ "zcash_primitives",
+ "zcash_protocol",
+ "zcash_script",
+ "zcash_transparent",
+ "zip32",
+]
+
+[[package]]
 name = "zcash_client_sqlite"
 version = "0.18.9"
 source = "git+https://github.com/zcash/librustzcash.git?rev=9f47de6#9f47de607641068813d3768a893fda822c93041b"
@@ -3939,6 +4001,7 @@ dependencies = [
  "tonic",
  "zcash_address",
  "zcash_client_backend",
+ "zcash_client_memory",
  "zcash_client_sqlite",
  "zcash_keys",
  "zcash_primitives",

@@ -11,6 +11,7 @@ zots-core = { path = "../zots-core" }
 # Zcash
 zcash_client_backend.workspace = true
 zcash_client_sqlite.workspace = true
+zcash_client_memory.workspace = true
 zcash_protocol.workspace = true
 zcash_address.workspace = true
 zcash_proofs.workspace = true
