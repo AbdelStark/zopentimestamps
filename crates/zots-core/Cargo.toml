@@ -7,6 +7,7 @@ description = "Core library for zOpenTimestamps - hashing, proof format, verific
 
 [dependencies]
 sha2.workspace = true
+blake3.workspace = true
 hex.workspace = true
 thiserror.workspace = true
 chrono.workspace = true

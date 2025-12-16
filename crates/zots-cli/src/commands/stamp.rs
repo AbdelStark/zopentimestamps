@@ -11,13 +11,17 @@
 use crate::output::*;
 use indicatif::{ProgressBar, ProgressStyle};
 use std::path::PathBuf;
-use zots_core::{TimestampProof, ZcashAttestation, hash_file, hash_from_hex, hash_to_hex};
+use zots_core::{
+    HashAlgorithm, TimestampProof, ZcashAttestation, hash_file_with, hash_from_hex_with,
+    hash_to_hex,
+};
 use zots_zcash::{ZcashConfig, ZotsWallet};
 
 pub async fn run(
     file: Option<PathBuf>,
     hash: Option<String>,
     output: Option<PathBuf>,
+    hash_algorithm: HashAlgorithm,
     no_wait: bool,
 ) -> anyhow::Result<()> {
     // Determine hash to timestamp
@@ -32,7 +36,7 @@ pub async fn run(
         );
         pb.set_message("Hashing file...");
 
-        let hash = hash_file(&file_path)?;
+        let hash = hash_file_with(&file_path, hash_algorithm)?;
         pb.finish_with_message("Hashing complete");
 
         let output = output.unwrap_or_else(|| {
@@ -46,16 +50,16 @@ pub async fn run(
         });
 
         print_info("File", &file_path.display().to_string());
-        print_hash(&hash_to_hex(&hash));
+        print_hash(&hash_to_hex(&hash), hash_algorithm.name());
 
         (hash, output)
     } else if let Some(hex) = hash {
         print_header("Timestamping Hash");
 
-        let hash = hash_from_hex(&hex)?;
+        let hash = hash_from_hex_with(&hex, hash_algorithm)?;
         let output = output.unwrap_or_else(|| PathBuf::from(format!("{}.zots", &hex[..16])));
 
-        print_hash(&hash_to_hex(&hash));
+        print_hash(&hash_to_hex(&hash), hash_algorithm.name());
 
         (hash, output)
     } else {
@@ -89,7 +93,7 @@ pub async fn run(
     print_info("TXID", &tx_result.txid);
 
     // Create proof
-    let mut proof = TimestampProof::new(hash_bytes);
+    let mut proof = TimestampProof::new_with_algorithm(hash_bytes, hash_algorithm);
 
     if no_wait {
         print_warning("Not waiting for confirmation - proof will be pending");

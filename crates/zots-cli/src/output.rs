@@ -29,9 +29,14 @@ pub fn print_info(label: &str, value: &str) {
     println!("  {}: {}", label.white().bold(), value);
 }
 
-/// Print a hash in yellow
-pub fn print_hash(hash: &str) {
-    println!("  SHA-256: {}", hash.yellow());
+/// Print a hash in yellow with its algorithm
+pub fn print_hash(hash: &str, algorithm: &str) {
+    println!(
+        "  {} ({}): {}",
+        "Hash".white().bold(),
+        algorithm,
+        hash.yellow()
+    );
 }
 
 /// Print a clickable terminal hyperlink

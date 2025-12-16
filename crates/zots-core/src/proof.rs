@@ -13,6 +13,7 @@
 //! ```json
 //! {
 //!   "version": 1,
+//!   "hash_algorithm": "sha256",
 //!   "hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
 //!   "attestations": [...]
 //! }
@@ -43,7 +44,7 @@
 //! assert!(compact.starts_with("zots1"));
 //! ```
 
-use crate::{Error, Hash256, Result};
+use crate::{Error, Hash256, HashAlgorithm, Result};
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -163,8 +164,11 @@ impl ZcashAttestation {
 pub struct TimestampProof {
     /// Proof format version
     pub version: u8,
-    /// SHA-256 hash of the timestamped data (hex string)
+    /// Hash of the timestamped data (hex string)
     pub hash: String,
+    /// Hash algorithm used to produce `hash`
+    #[serde(default)]
+    pub hash_algorithm: HashAlgorithm,
     /// List of blockchain attestations
     pub attestations: Vec<ZcashAttestation>,
 }
@@ -172,9 +176,15 @@ pub struct TimestampProof {
 impl TimestampProof {
     /// Create a new proof for a hash (no attestations yet)
     pub fn new(hash: Hash256) -> Self {
+        Self::new_with_algorithm(hash, HashAlgorithm::Sha256)
+    }
+
+    /// Create a new proof specifying the hash algorithm
+    pub fn new_with_algorithm(hash: Hash256, algorithm: HashAlgorithm) -> Self {
         Self {
             version: PROOF_VERSION,
             hash: hex::encode(hash),
+            hash_algorithm: algorithm,
             attestations: Vec::new(),
         }
     }
@@ -189,6 +199,11 @@ impl TimestampProof {
         let mut arr = [0u8; 32];
         arr.copy_from_slice(&bytes);
         Ok(arr)
+    }
+
+    /// Get the hash algorithm used for this proof
+    pub fn hash_algorithm(&self) -> HashAlgorithm {
+        self.hash_algorithm
     }
 
     /// Add an attestation to the proof
@@ -346,6 +361,7 @@ mod tests {
         let proof = TimestampProof::new(hash);
         assert_eq!(proof.version, PROOF_VERSION);
         assert_eq!(proof.hash, hex::encode(hash));
+        assert_eq!(proof.hash_algorithm, HashAlgorithm::Sha256);
         assert!(proof.attestations.is_empty());
         assert!(!proof.is_confirmed());
     }
@@ -355,6 +371,24 @@ mod tests {
         let hash = [0x42u8; 32];
         let proof = TimestampProof::new(hash);
         assert_eq!(proof.hash_bytes().unwrap(), hash);
+    }
+
+    #[test]
+    fn test_proof_new_with_algorithm() {
+        let hash = [0x22u8; 32];
+        let proof = TimestampProof::new_with_algorithm(hash, HashAlgorithm::Blake3);
+
+        assert_eq!(proof.version, PROOF_VERSION);
+        assert_eq!(proof.hash, hex::encode(hash));
+        assert_eq!(proof.hash_algorithm, HashAlgorithm::Blake3);
+    }
+
+    #[test]
+    fn test_proof_deserialize_defaults_algorithm() {
+        let json = r#"{"version": 1, "hash": "0000000000000000000000000000000000000000000000000000000000000000", "attestations": []}"#;
+        let proof = TimestampProof::deserialize(json).unwrap();
+
+        assert_eq!(proof.hash_algorithm, HashAlgorithm::Sha256);
     }
 
     #[test]
@@ -377,6 +411,7 @@ mod tests {
 
         assert_eq!(deserialized.version, proof.version);
         assert_eq!(deserialized.hash, proof.hash);
+        assert_eq!(deserialized.hash_algorithm, proof.hash_algorithm);
         assert_eq!(deserialized.attestations.len(), 1);
         assert_eq!(deserialized.attestations[0].network, Network::Testnet);
         assert_eq!(deserialized.attestations[0].block_height, 3721456);
@@ -387,10 +422,9 @@ mod tests {
     #[test]
     fn test_proof_json_is_readable() {
         let hash = [
-            0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0,
-            0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0,
-            0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0,
-            0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0,
+            0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0, 0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC,
+            0xDE, 0xF0, 0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0, 0x12, 0x34, 0x56, 0x78,
+            0x9A, 0xBC, 0xDE, 0xF0,
         ];
         let mut proof = TimestampProof::new(hash);
         proof.add_attestation(ZcashAttestation::new(
@@ -406,6 +440,7 @@ mod tests {
         // Verify it's human-readable JSON
         assert!(json.contains("\"version\": 1"));
         assert!(json.contains("\"hash\":"));
+        assert!(json.contains("\"hash_algorithm\": \"sha256\""));
         assert!(json.contains("\"attestations\":"));
         assert!(json.contains("\"network\": \"testnet\""));
         assert!(json.contains("\"block_height\": 12345"));
@@ -468,6 +503,7 @@ mod tests {
 
         let loaded = TimestampProof::load(&temp_path).unwrap();
         assert_eq!(loaded.hash, proof.hash);
+        assert_eq!(loaded.hash_algorithm, proof.hash_algorithm);
         assert_eq!(loaded.attestations.len(), 1);
 
         // Cleanup
@@ -492,6 +528,7 @@ mod tests {
         let decoded = TimestampProof::from_compact(&compact).unwrap();
         assert_eq!(decoded.version, proof.version);
         assert_eq!(decoded.hash, proof.hash);
+        assert_eq!(decoded.hash_algorithm, proof.hash_algorithm);
         assert_eq!(decoded.attestations.len(), 1);
         assert_eq!(decoded.attestations[0].network, Network::Testnet);
         assert_eq!(decoded.attestations[0].block_height, 3721456);

@@ -115,8 +115,17 @@ fn draw_stamp(f: &mut Frame, area: Rect, app: &App) {
 
     match &app.operation_phase {
         OperationPhase::Input | OperationPhase::Failed => {
+            content.push(Line::from(vec![Span::styled(
+                "Enter file path or hash to timestamp:",
+                Style::default().fg(Color::White),
+            )]));
             content.push(Line::from(vec![
-                Span::styled("Enter file path or hash to timestamp:", Style::default().fg(Color::White)),
+                Span::styled("Algorithm: ", Style::default().fg(Color::Gray)),
+                Span::styled(
+                    app.hash_algorithm.name(),
+                    Style::default().fg(Color::Yellow),
+                ),
+                Span::styled("  [Tab] toggle", Style::default().fg(Color::Gray)),
             ]));
             content.push(Line::from(""));
             content.push(Line::from(vec![
@@ -150,7 +159,10 @@ fn draw_stamp(f: &mut Frame, area: Rect, app: &App) {
             content.push(Line::from(vec![
                 Span::styled(app.spinner(), Style::default().fg(Color::Yellow)),
                 Span::raw(" "),
-                Span::styled("Syncing wallet with blockchain...", Style::default().fg(Color::Yellow)),
+                Span::styled(
+                    "Syncing wallet with blockchain...",
+                    Style::default().fg(Color::Yellow),
+                ),
             ]));
             content.push(Line::from(""));
             content.push(Line::from(Span::styled(
@@ -162,7 +174,10 @@ fn draw_stamp(f: &mut Frame, area: Rect, app: &App) {
             content.push(Line::from(vec![
                 Span::styled(app.spinner(), Style::default().fg(Color::Cyan)),
                 Span::raw(" "),
-                Span::styled("Creating and broadcasting transaction...", Style::default().fg(Color::Cyan)),
+                Span::styled(
+                    "Creating and broadcasting transaction...",
+                    Style::default().fg(Color::Cyan),
+                ),
             ]));
             content.push(Line::from(""));
             content.push(Line::from(Span::styled(
@@ -174,7 +189,10 @@ fn draw_stamp(f: &mut Frame, area: Rect, app: &App) {
             content.push(Line::from(vec![
                 Span::styled(app.spinner(), Style::default().fg(Color::Magenta)),
                 Span::raw(" "),
-                Span::styled("Waiting for block confirmation...", Style::default().fg(Color::Magenta)),
+                Span::styled(
+                    "Waiting for block confirmation...",
+                    Style::default().fg(Color::Magenta),
+                ),
             ]));
             content.push(Line::from(""));
             content.push(Line::from(vec![
@@ -192,8 +210,18 @@ fn draw_stamp(f: &mut Frame, area: Rect, app: &App) {
             if let Some(ref result) = app.stamp_result {
                 // Success header
                 content.push(Line::from(vec![
-                    Span::styled("✓ ", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
-                    Span::styled("TIMESTAMP CONFIRMED", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+                    Span::styled(
+                        "✓ ",
+                        Style::default()
+                            .fg(Color::Green)
+                            .add_modifier(Modifier::BOLD),
+                    ),
+                    Span::styled(
+                        "TIMESTAMP CONFIRMED",
+                        Style::default()
+                            .fg(Color::Green)
+                            .add_modifier(Modifier::BOLD),
+                    ),
                 ]));
                 content.push(Line::from(""));
 
@@ -204,13 +232,20 @@ fn draw_stamp(f: &mut Frame, area: Rect, app: &App) {
                     Span::styled("...", Style::default().fg(Color::Gray)),
                 ]));
                 content.push(Line::from(vec![
+                    Span::styled("  Alg:    ", Style::default().fg(Color::Gray)),
+                    Span::styled(result.algorithm.name(), Style::default().fg(Color::White)),
+                ]));
+                content.push(Line::from(vec![
                     Span::styled("  TXID:   ", Style::default().fg(Color::Gray)),
                     Span::styled(&result.txid[..32], Style::default().fg(Color::Yellow)),
                     Span::styled("...", Style::default().fg(Color::Gray)),
                 ]));
                 content.push(Line::from(vec![
                     Span::styled("  Block:  ", Style::default().fg(Color::Gray)),
-                    Span::styled(result.block_height.to_string(), Style::default().fg(Color::Cyan)),
+                    Span::styled(
+                        result.block_height.to_string(),
+                        Style::default().fg(Color::Cyan),
+                    ),
                 ]));
                 // Format block time as human-readable
                 let time_str = DateTime::<Utc>::from_timestamp(result.block_time as i64, 0)
@@ -245,7 +280,10 @@ fn draw_stamp(f: &mut Frame, area: Rect, app: &App) {
                 content.push(Line::from(""));
                 content.push(Line::from(vec![
                     Span::styled("  Length: ", Style::default().fg(Color::Gray)),
-                    Span::styled(format!("{} chars", result.compact.len()), Style::default().fg(Color::White)),
+                    Span::styled(
+                        format!("{} chars", result.compact.len()),
+                        Style::default().fg(Color::White),
+                    ),
                 ]));
             }
             content.push(Line::from(""));
@@ -270,7 +308,10 @@ fn draw_verify(f: &mut Frame, area: Rect, app: &App) {
             // Step 1: Enter file or hash
             content.push(Line::from(vec![
                 Span::styled("Step 1/2: ", Style::default().fg(Color::Cyan)),
-                Span::styled("Enter file path or hash to verify:", Style::default().fg(Color::White)),
+                Span::styled(
+                    "Enter file path or hash to verify:",
+                    Style::default().fg(Color::White),
+                ),
             ]));
             content.push(Line::from(""));
             content.push(Line::from(vec![
@@ -301,7 +342,10 @@ fn draw_verify(f: &mut Frame, area: Rect, app: &App) {
             // Step 2: Enter proof path
             content.push(Line::from(vec![
                 Span::styled("Step 2/2: ", Style::default().fg(Color::Cyan)),
-                Span::styled("Enter proof file path (.zots):", Style::default().fg(Color::White)),
+                Span::styled(
+                    "Enter proof file path (.zots):",
+                    Style::default().fg(Color::White),
+                ),
             ]));
             content.push(Line::from(""));
 
@@ -347,7 +391,10 @@ fn draw_verify(f: &mut Frame, area: Rect, app: &App) {
             content.push(Line::from(vec![
                 Span::styled(app.spinner(), Style::default().fg(Color::Cyan)),
                 Span::raw(" "),
-                Span::styled("Verifying against blockchain...", Style::default().fg(Color::Cyan)),
+                Span::styled(
+                    "Verifying against blockchain...",
+                    Style::default().fg(Color::Cyan),
+                ),
             ]));
             content.push(Line::from(""));
             content.push(Line::from(Span::styled(
@@ -361,15 +408,31 @@ fn draw_verify(f: &mut Frame, area: Rect, app: &App) {
                 if result.valid {
                     // Valid timestamp
                     content.push(Line::from(vec![
-                        Span::styled("✓ ", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
-                        Span::styled("VALID TIMESTAMP", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+                        Span::styled(
+                            "✓ ",
+                            Style::default()
+                                .fg(Color::Green)
+                                .add_modifier(Modifier::BOLD),
+                        ),
+                        Span::styled(
+                            "VALID TIMESTAMP",
+                            Style::default()
+                                .fg(Color::Green)
+                                .add_modifier(Modifier::BOLD),
+                        ),
                         Span::styled(" (verified on-chain)", Style::default().fg(Color::Gray)),
                     ]));
                 } else {
                     // Invalid or error
                     content.push(Line::from(vec![
-                        Span::styled("✗ ", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
-                        Span::styled("VERIFICATION FAILED", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
+                        Span::styled(
+                            "✗ ",
+                            Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+                        ),
+                        Span::styled(
+                            "VERIFICATION FAILED",
+                            Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+                        ),
                     ]));
                 }
                 content.push(Line::from(""));
@@ -399,6 +462,10 @@ fn draw_verify(f: &mut Frame, area: Rect, app: &App) {
                             Style::default().fg(Color::White),
                         ),
                     ]));
+                    content.push(Line::from(vec![
+                        Span::styled("  Alg:      ", Style::default().fg(Color::Gray)),
+                        Span::styled(result.algorithm.name(), Style::default().fg(Color::White)),
+                    ]));
                 }
 
                 if !result.network.is_empty() {
@@ -411,7 +478,10 @@ fn draw_verify(f: &mut Frame, area: Rect, app: &App) {
                 if result.block_height > 0 {
                     content.push(Line::from(vec![
                         Span::styled("  Block:    ", Style::default().fg(Color::Gray)),
-                        Span::styled(result.block_height.to_string(), Style::default().fg(Color::Cyan)),
+                        Span::styled(
+                            result.block_height.to_string(),
+                            Style::default().fg(Color::Cyan),
+                        ),
                     ]));
                 }
 
@@ -441,7 +511,14 @@ fn draw_verify(f: &mut Frame, area: Rect, app: &App) {
                     content.push(Line::from(""));
                     content.push(Line::from(vec![
                         Span::styled("  Note: ", Style::default().fg(Color::Gray)),
-                        Span::styled(error, Style::default().fg(if result.valid { Color::Gray } else { Color::Red })),
+                        Span::styled(
+                            error,
+                            Style::default().fg(if result.valid {
+                                Color::Gray
+                            } else {
+                                Color::Red
+                            }),
+                        ),
                     ]));
                 }
 
@@ -478,7 +555,10 @@ fn draw_wallet(f: &mut Frame, area: Rect, app: &App) {
         content.push(Line::from(vec![
             Span::styled(app.spinner(), Style::default().fg(Color::Yellow)),
             Span::raw(" "),
-            Span::styled("Syncing wallet with blockchain...", Style::default().fg(Color::Yellow)),
+            Span::styled(
+                "Syncing wallet with blockchain...",
+                Style::default().fg(Color::Yellow),
+            ),
         ]));
         content.push(Line::from(""));
         content.push(Line::from(Span::styled(
@@ -502,7 +582,9 @@ fn draw_wallet(f: &mut Frame, area: Rect, app: &App) {
             Span::styled("  Balance:      ", Style::default().fg(Color::Gray)),
             Span::styled(
                 format!("{:.8} TAZ", balance_zec),
-                Style::default().fg(Color::Green).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(Color::Green)
+                    .add_modifier(Modifier::BOLD),
             ),
         ]));
         content.push(Line::from(""));
@@ -525,7 +607,12 @@ fn draw_wallet(f: &mut Frame, area: Rect, app: &App) {
             Style::default().fg(Color::White),
         )));
         content.push(Line::from(vec![
-            Span::styled("    [S] ", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "    [S] ",
+                Style::default()
+                    .fg(Color::Cyan)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::styled("Sync wallet", Style::default().fg(Color::Gray)),
         ]));
         content.push(Line::from(""));

@@ -10,7 +10,10 @@ use anyhow::Result;
 use crossterm::event::KeyCode;
 use std::path::PathBuf;
 use tokio::sync::mpsc;
-use zots_core::{TimestampProof, ZcashAttestation, hash_file, hash_from_hex, hash_to_hex};
+use zots_core::{
+    HashAlgorithm, TimestampProof, ZcashAttestation, hash_file_with, hash_from_hex_with,
+    hash_to_hex,
+};
 use zots_zcash::{ZcashConfig, ZotsWallet};
 
 /// Spinner frames for animated progress indicator
@@ -55,6 +58,13 @@ pub enum VerifyStep {
     Results,
 }
 
+/// Input kind for verification flow
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VerifyInputKind {
+    File,
+    Hash,
+}
+
 /// Messages sent from background tasks to update UI
 #[derive(Debug, Clone)]
 pub enum TaskMessage {
@@ -86,6 +96,8 @@ pub struct App {
     pub state: AppState,
     /// Configuration (if available)
     pub config: Option<ZcashConfig>,
+    /// Selected hash algorithm for stamping
+    pub hash_algorithm: HashAlgorithm,
     /// Current block height
     pub block_height: u64,
     /// Wallet balance in zatoshis
@@ -106,6 +118,8 @@ pub struct App {
     pub verify_step: VerifyStep,
     /// Stored file/hash input for verify flow
     pub verify_file_input: String,
+    /// Whether verify input was a file path or hash string
+    pub verify_input_kind: Option<VerifyInputKind>,
     /// Stored hash bytes for verify (computed from file or parsed from hex)
     pub verify_hash: Option<[u8; 32]>,
     /// Stamp result details for display
@@ -124,6 +138,7 @@ pub struct App {
 #[derive(Debug, Clone)]
 pub struct StampResult {
     pub hash: String,
+    pub algorithm: HashAlgorithm,
     pub txid: String,
     pub block_height: u32,
     pub block_time: u64,
@@ -135,6 +150,7 @@ pub struct StampResult {
 #[derive(Debug, Clone)]
 pub struct VerifyResult {
     pub hash: String,
+    pub algorithm: HashAlgorithm,
     pub valid: bool,
     pub network: String,
     pub block_height: u32,
@@ -168,16 +184,22 @@ impl App {
         Ok(Self {
             state: AppState::Menu,
             config,
+            hash_algorithm: HashAlgorithm::Sha256,
             block_height: 0,
             balance: 0,
             status_message: status,
             input_buffer: String::new(),
             result_message: String::new(),
             result_is_error: false,
-            operation_phase: if task_running { OperationPhase::Syncing } else { OperationPhase::Input },
+            operation_phase: if task_running {
+                OperationPhase::Syncing
+            } else {
+                OperationPhase::Input
+            },
             spinner_frame: 0,
             verify_step: VerifyStep::FileOrHash,
             verify_file_input: String::new(),
+            verify_input_kind: None,
             verify_hash: None,
             stamp_result: None,
             verify_result: None,
@@ -217,7 +239,12 @@ impl App {
                 TaskMessage::VerifyComplete(result) => {
                     self.verify_result = Some(result);
                     self.verify_step = VerifyStep::Results;
-                    self.operation_phase = if self.verify_result.as_ref().map(|r| r.valid).unwrap_or(false) {
+                    self.operation_phase = if self
+                        .verify_result
+                        .as_ref()
+                        .map(|r| r.valid)
+                        .unwrap_or(false)
+                    {
                         OperationPhase::Complete
                     } else {
                         OperationPhase::Failed
@@ -230,7 +257,10 @@ impl App {
                     self.operation_phase = OperationPhase::Failed;
                     self.task_running = false;
                 }
-                TaskMessage::SyncComplete { block_height, balance } => {
+                TaskMessage::SyncComplete {
+                    block_height,
+                    balance,
+                } => {
                     self.block_height = block_height;
                     self.balance = balance;
                     self.status_message = "Synced".to_string();
@@ -245,7 +275,10 @@ impl App {
                     self.operation_phase = OperationPhase::Failed;
                     self.task_running = false;
                 }
-                TaskMessage::InitialSyncComplete { block_height, balance } => {
+                TaskMessage::InitialSyncComplete {
+                    block_height,
+                    balance,
+                } => {
                     // Silent update - just set values and return to ready state
                     self.block_height = block_height;
                     self.balance = balance;
@@ -278,15 +311,31 @@ impl App {
         self.operation_phase = OperationPhase::Input;
         self.verify_step = VerifyStep::FileOrHash;
         self.verify_file_input.clear();
+        self.verify_input_kind = None;
         self.verify_hash = None;
         self.stamp_result = None;
         self.verify_result = None;
         self.task_running = false;
     }
 
+    /// Toggle between supported hash algorithms for stamping
+    fn toggle_hash_algorithm(&mut self) {
+        self.hash_algorithm = match self.hash_algorithm {
+            HashAlgorithm::Sha256 => HashAlgorithm::Blake3,
+            HashAlgorithm::Blake3 => HashAlgorithm::Sha256,
+        };
+        self.result_message = format!("Using {}", self.hash_algorithm.name());
+        self.result_is_error = false;
+    }
+
     /// Handle keyboard input in current state
     pub fn handle_input(&mut self, key: KeyCode) -> Result<()> {
         match key {
+            KeyCode::Tab => {
+                if matches!(self.state, AppState::Stamp) && !self.task_running {
+                    self.toggle_hash_algorithm();
+                }
+            }
             KeyCode::Char(c) => {
                 // Don't accept input while task is running
                 if !self.task_running {
@@ -358,7 +407,7 @@ impl App {
         // Validate input and compute hash (fast, synchronous)
         let path = PathBuf::from(&input);
         let (hash_bytes, output_path) = if path.exists() {
-            match hash_file(&path) {
+            match hash_file_with(&path, self.hash_algorithm) {
                 Ok(h) => {
                     let output = PathBuf::from(format!(
                         "{}.zots",
@@ -374,7 +423,7 @@ impl App {
                 }
             }
         } else if input.len() >= 40 {
-            match hash_from_hex(&input) {
+            match hash_from_hex_with(&input, self.hash_algorithm) {
                 Ok(h) => {
                     let output = PathBuf::from(format!("{}.zots", &input[..16]));
                     (h, output)
@@ -401,10 +450,11 @@ impl App {
         // Clone sender for background task
         let tx = self.task_tx.clone();
         let network = config.network;
+        let algorithm = self.hash_algorithm;
 
         // Spawn background task
         tokio::spawn(async move {
-            run_stamp_task(tx, config, hash_bytes, output_path, network).await;
+            run_stamp_task(tx, config, hash_bytes, output_path, network, algorithm).await;
         });
     }
 
@@ -443,27 +493,24 @@ impl App {
                     return;
                 }
 
+                self.verify_hash = None;
+                self.verify_input_kind = None;
+
                 // Determine if input is a file or hash (synchronous, fast)
                 let path = PathBuf::from(&input);
                 if path.exists() {
-                    match hash_file(&path) {
-                        Ok(h) => {
-                            self.verify_hash = Some(h);
-                            self.verify_file_input = input;
-                            self.verify_step = VerifyStep::ProofPath;
-                            self.result_message.clear();
-                            self.result_is_error = false;
-                        }
-                        Err(e) => {
-                            self.result_message = format!("Hash error: {}", e);
-                            self.result_is_error = true;
-                        }
-                    }
+                    self.verify_input_kind = Some(VerifyInputKind::File);
+                    self.verify_file_input = input;
+                    self.verify_hash = None;
+                    self.verify_step = VerifyStep::ProofPath;
+                    self.result_message.clear();
+                    self.result_is_error = false;
                 } else if input.len() >= 40 {
-                    match hash_from_hex(&input) {
-                        Ok(h) => {
-                            self.verify_hash = Some(h);
+                    match hash_from_hex_with(&input, HashAlgorithm::Sha256) {
+                        Ok(_) => {
+                            self.verify_input_kind = Some(VerifyInputKind::Hash);
                             self.verify_file_input = input;
+                            self.verify_hash = None;
                             self.verify_step = VerifyStep::ProofPath;
                             self.result_message.clear();
                             self.result_is_error = false;
@@ -474,7 +521,8 @@ impl App {
                         }
                     }
                 } else {
-                    self.result_message = "File not found and input is not a valid hash".to_string();
+                    self.result_message =
+                        "File not found and input is not a valid hash".to_string();
                     self.result_is_error = true;
                 }
             }
@@ -515,12 +563,35 @@ impl App {
                     }
                 };
 
+                let proof_algorithm = proof.hash_algorithm();
+                let recomputed_hash = match self.verify_input_kind {
+                    Some(VerifyInputKind::File) => {
+                        let path = PathBuf::from(&self.verify_file_input);
+                        hash_file_with(&path, proof_algorithm)
+                    }
+                    Some(VerifyInputKind::Hash) => {
+                        hash_from_hex_with(&self.verify_file_input, proof_algorithm)
+                    }
+                    None => Ok(proof_hash_bytes),
+                };
+
+                let verify_hash = match recomputed_hash {
+                    Ok(hash) => hash,
+                    Err(e) => {
+                        self.result_message = format!("Hash error: {}", e);
+                        self.result_is_error = true;
+                        return;
+                    }
+                };
+                self.verify_hash = Some(verify_hash);
+
                 let file_hash_matches = self.verify_hash.map(|h| h == proof_hash_bytes);
                 if let Some(matches) = file_hash_matches
                     && !matches
                 {
                     self.verify_result = Some(VerifyResult {
                         hash: proof.hash.clone(),
+                        algorithm: proof_algorithm,
                         valid: false,
                         network: String::new(),
                         block_height: 0,
@@ -538,6 +609,7 @@ impl App {
                 if proof.attestations.is_empty() {
                     self.verify_result = Some(VerifyResult {
                         hash: proof.hash.clone(),
+                        algorithm: proof_algorithm,
                         valid: false,
                         network: String::new(),
                         block_height: 0,
@@ -560,13 +632,16 @@ impl App {
                         let att = &proof.attestations[0];
                         self.verify_result = Some(VerifyResult {
                             hash: proof.hash.clone(),
+                            algorithm: proof_algorithm,
                             valid: true,
                             network: att.network.to_string(),
                             block_height: att.block_height,
                             timestamp: att.timestamp().to_rfc3339(),
                             txid: att.txid_hex().to_string(),
                             explorer_link: att.explorer_link(),
-                            error: Some("Cannot verify on-chain (no wallet configured)".to_string()),
+                            error: Some(
+                                "Cannot verify on-chain (no wallet configured)".to_string(),
+                            ),
                             file_hash_matches,
                         });
                         self.verify_step = VerifyStep::Results;
@@ -589,6 +664,7 @@ impl App {
                 // Prepare data for background task
                 let verify_data = VerifyTaskData {
                     proof_hash: proof.hash.clone(),
+                    algorithm: proof_algorithm,
                     proof_hash_bytes,
                     txid_bytes,
                     block_height: att.block_height,
@@ -628,6 +704,7 @@ impl App {
 /// Data needed for verify background task
 struct VerifyTaskData {
     proof_hash: String,
+    algorithm: HashAlgorithm,
     proof_hash_bytes: [u8; 32],
     txid_bytes: [u8; 32],
     block_height: u32,
@@ -645,39 +722,62 @@ async fn run_stamp_task(
     hash_bytes: [u8; 32],
     output_path: PathBuf,
     network: zots_core::Network,
+    hash_algorithm: HashAlgorithm,
 ) {
     let hash_hex = hash_to_hex(&hash_bytes);
 
     // Syncing phase
     let _ = tx.send(TaskMessage::Phase(OperationPhase::Syncing)).await;
-    let _ = tx.send(TaskMessage::Status("Syncing wallet...".to_string())).await;
+    let _ = tx
+        .send(TaskMessage::Status("Syncing wallet...".to_string()))
+        .await;
 
     let mut wallet = match ZotsWallet::new(config).await {
         Ok(w) => w,
         Err(e) => {
-            let _ = tx.send(TaskMessage::StampFailed(format!("Wallet error: {}", e))).await;
+            let _ = tx
+                .send(TaskMessage::StampFailed(format!("Wallet error: {}", e)))
+                .await;
             return;
         }
     };
 
     if let Err(e) = wallet.init_account().await {
-        let _ = tx.send(TaskMessage::StampFailed(format!("Account init error: {}", e))).await;
+        let _ = tx
+            .send(TaskMessage::StampFailed(format!(
+                "Account init error: {}",
+                e
+            )))
+            .await;
         return;
     }
 
     if let Err(e) = wallet.sync().await {
-        let _ = tx.send(TaskMessage::StampFailed(format!("Sync failed: {}", e))).await;
+        let _ = tx
+            .send(TaskMessage::StampFailed(format!("Sync failed: {}", e)))
+            .await;
         return;
     }
 
     // Broadcasting phase
-    let _ = tx.send(TaskMessage::Phase(OperationPhase::Broadcasting)).await;
-    let _ = tx.send(TaskMessage::Status("Creating and broadcasting transaction...".to_string())).await;
+    let _ = tx
+        .send(TaskMessage::Phase(OperationPhase::Broadcasting))
+        .await;
+    let _ = tx
+        .send(TaskMessage::Status(
+            "Creating and broadcasting transaction...".to_string(),
+        ))
+        .await;
 
     let tx_result = match wallet.create_timestamp_tx(&hash_bytes).await {
         Ok(r) => r,
         Err(e) => {
-            let _ = tx.send(TaskMessage::StampFailed(format!("Transaction failed: {}", e))).await;
+            let _ = tx
+                .send(TaskMessage::StampFailed(format!(
+                    "Transaction failed: {}",
+                    e
+                )))
+                .await;
             return;
         }
     };
@@ -685,28 +785,38 @@ async fn run_stamp_task(
     let txid = tx_result.txid.clone();
 
     // Waiting for confirmation phase
-    let _ = tx.send(TaskMessage::Phase(OperationPhase::WaitingConfirmation {
-        txid: txid.clone(),
-    })).await;
-    let _ = tx.send(TaskMessage::Status(format!("Waiting for confirmation (TXID: {}...)", &txid[..12]))).await;
+    let _ = tx
+        .send(TaskMessage::Phase(OperationPhase::WaitingConfirmation {
+            txid: txid.clone(),
+        }))
+        .await;
+    let _ = tx
+        .send(TaskMessage::Status(format!(
+            "Waiting for confirmation (TXID: {}...)",
+            &txid[..12]
+        )))
+        .await;
 
     let confirmation = match wallet.wait_confirmation(&txid, 10).await {
         Ok(c) => c,
         Err(e) => {
             // Save pending proof
-            let proof = TimestampProof::new(hash_bytes);
+            let proof = TimestampProof::new_with_algorithm(hash_bytes, hash_algorithm);
             let _ = proof.save(&output_path);
 
-            let _ = tx.send(TaskMessage::StampFailed(format!(
-                "TX broadcast but confirmation timed out: {}\nPending proof saved: {}",
-                e, output_path.display()
-            ))).await;
+            let _ = tx
+                .send(TaskMessage::StampFailed(format!(
+                    "TX broadcast but confirmation timed out: {}\nPending proof saved: {}",
+                    e,
+                    output_path.display()
+                )))
+                .await;
             return;
         }
     };
 
     // Create and save proof
-    let mut proof = TimestampProof::new(hash_bytes);
+    let mut proof = TimestampProof::new_with_algorithm(hash_bytes, hash_algorithm);
     proof.add_attestation(ZcashAttestation::new(
         network,
         tx_result.txid_bytes,
@@ -716,37 +826,53 @@ async fn run_stamp_task(
     ));
 
     if let Err(e) = proof.save(&output_path) {
-        let _ = tx.send(TaskMessage::StampFailed(format!("Save error: {}", e))).await;
+        let _ = tx
+            .send(TaskMessage::StampFailed(format!("Save error: {}", e)))
+            .await;
         return;
     }
 
-    let compact = proof.to_compact().unwrap_or_else(|_| "Error generating compact format".to_string());
+    let compact = proof
+        .to_compact()
+        .unwrap_or_else(|_| "Error generating compact format".to_string());
 
-    let _ = tx.send(TaskMessage::StampComplete(StampResult {
-        hash: hash_hex,
-        txid,
-        block_height: confirmation.block_height,
-        block_time: confirmation.block_time as u64,
-        output_path: output_path.display().to_string(),
-        compact,
-    })).await;
+    let _ = tx
+        .send(TaskMessage::StampComplete(StampResult {
+            hash: hash_hex,
+            algorithm: hash_algorithm,
+            txid,
+            block_height: confirmation.block_height,
+            block_time: confirmation.block_time as u64,
+            output_path: output_path.display().to_string(),
+            compact,
+        }))
+        .await;
 }
 
 /// Background task for wallet sync (explicit user action)
 async fn run_sync_task(tx: mpsc::Sender<TaskMessage>, config: ZcashConfig) {
     let _ = tx.send(TaskMessage::Phase(OperationPhase::Syncing)).await;
-    let _ = tx.send(TaskMessage::Status("Syncing wallet...".to_string())).await;
+    let _ = tx
+        .send(TaskMessage::Status("Syncing wallet...".to_string()))
+        .await;
 
     let mut wallet = match ZotsWallet::new(config).await {
         Ok(w) => w,
         Err(e) => {
-            let _ = tx.send(TaskMessage::SyncFailed(format!("Wallet error: {}", e))).await;
+            let _ = tx
+                .send(TaskMessage::SyncFailed(format!("Wallet error: {}", e)))
+                .await;
             return;
         }
     };
 
     if let Err(e) = wallet.init_account().await {
-        let _ = tx.send(TaskMessage::SyncFailed(format!("Account init error: {}", e))).await;
+        let _ = tx
+            .send(TaskMessage::SyncFailed(format!(
+                "Account init error: {}",
+                e
+            )))
+            .await;
         return;
     }
 
@@ -758,7 +884,12 @@ async fn run_sync_task(tx: mpsc::Sender<TaskMessage>, config: ZcashConfig) {
     let block_height = wallet.get_block_height().await.unwrap_or(0);
     let balance = wallet.get_balance().unwrap_or(0);
 
-    let _ = tx.send(TaskMessage::SyncComplete { block_height, balance }).await;
+    let _ = tx
+        .send(TaskMessage::SyncComplete {
+            block_height,
+            balance,
+        })
+        .await;
 }
 
 /// Background task for initial wallet sync (silent, at app startup)
@@ -784,61 +915,83 @@ async fn run_initial_sync_task(tx: mpsc::Sender<TaskMessage>, config: ZcashConfi
     let block_height = wallet.get_block_height().await.unwrap_or(0);
     let balance = wallet.get_balance().unwrap_or(0);
 
-    let _ = tx.send(TaskMessage::InitialSyncComplete { block_height, balance }).await;
+    let _ = tx
+        .send(TaskMessage::InitialSyncComplete {
+            block_height,
+            balance,
+        })
+        .await;
 }
 
 /// Background task for verify operation
-async fn run_verify_task(
-    tx: mpsc::Sender<TaskMessage>,
-    config: ZcashConfig,
-    data: VerifyTaskData,
-) {
+async fn run_verify_task(tx: mpsc::Sender<TaskMessage>, config: ZcashConfig, data: VerifyTaskData) {
     let _ = tx.send(TaskMessage::Phase(OperationPhase::Syncing)).await;
-    let _ = tx.send(TaskMessage::Status("Verifying against blockchain...".to_string())).await;
+    let _ = tx
+        .send(TaskMessage::Status(
+            "Verifying against blockchain...".to_string(),
+        ))
+        .await;
 
     let mut wallet = match ZotsWallet::new(config).await {
         Ok(w) => w,
         Err(e) => {
-            let _ = tx.send(TaskMessage::VerifyFailed(format!("Wallet error: {}", e))).await;
+            let _ = tx
+                .send(TaskMessage::VerifyFailed(format!("Wallet error: {}", e)))
+                .await;
             return;
         }
     };
 
     if let Err(e) = wallet.init_account().await {
-        let _ = tx.send(TaskMessage::VerifyFailed(format!("Account init error: {}", e))).await;
+        let _ = tx
+            .send(TaskMessage::VerifyFailed(format!(
+                "Account init error: {}",
+                e
+            )))
+            .await;
         return;
     }
 
     let result = wallet
-        .verify_timestamp_tx(&data.txid_bytes, &data.proof_hash_bytes, Some(data.block_height))
+        .verify_timestamp_tx(
+            &data.txid_bytes,
+            &data.proof_hash_bytes,
+            Some(data.block_height),
+        )
         .await;
 
     match result {
         Ok(vr) => {
-            let _ = tx.send(TaskMessage::VerifyComplete(VerifyResult {
-                hash: data.proof_hash,
-                valid: vr.valid,
-                network: data.network,
-                block_height: data.block_height,
-                timestamp: data.timestamp,
-                txid: data.txid,
-                explorer_link: data.explorer_link,
-                error: vr.error,
-                file_hash_matches: data.file_hash_matches,
-            })).await;
+            let _ = tx
+                .send(TaskMessage::VerifyComplete(VerifyResult {
+                    hash: data.proof_hash,
+                    algorithm: data.algorithm,
+                    valid: vr.valid,
+                    network: data.network,
+                    block_height: data.block_height,
+                    timestamp: data.timestamp,
+                    txid: data.txid,
+                    explorer_link: data.explorer_link,
+                    error: vr.error,
+                    file_hash_matches: data.file_hash_matches,
+                }))
+                .await;
         }
         Err(e) => {
-            let _ = tx.send(TaskMessage::VerifyComplete(VerifyResult {
-                hash: data.proof_hash,
-                valid: false,
-                network: data.network,
-                block_height: data.block_height,
-                timestamp: data.timestamp,
-                txid: data.txid,
-                explorer_link: data.explorer_link,
-                error: Some(format!("Verification error: {}", e)),
-                file_hash_matches: data.file_hash_matches,
-            })).await;
+            let _ = tx
+                .send(TaskMessage::VerifyComplete(VerifyResult {
+                    hash: data.proof_hash,
+                    algorithm: data.algorithm,
+                    valid: false,
+                    network: data.network,
+                    block_height: data.block_height,
+                    timestamp: data.timestamp,
+                    txid: data.txid,
+                    explorer_link: data.explorer_link,
+                    error: Some(format!("Verification error: {}", e)),
+                    file_hash_matches: data.file_hash_matches,
+                }))
+                .await;
         }
     }
 }

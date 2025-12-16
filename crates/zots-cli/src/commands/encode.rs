@@ -42,6 +42,7 @@ pub fn run(input: String) -> anyhow::Result<()> {
     // Show what's embedded
     println!();
     print_info("Hash", &proof.hash);
+    print_info("Algorithm", proof.hash_algorithm().name());
     print_info("Attestations", &proof.attestations.len().to_string());
     if let Some(att) = proof.attestations.first() {
         print_info("Network", &att.network.to_string());

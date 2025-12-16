@@ -8,7 +8,7 @@
 //! This crate provides the fundamental types and operations for creating
 //! and verifying timestamp proofs:
 //!
-//! - **Hashing**: SHA-256 hashing of files and data
+//! - **Hashing**: SHA-256 (default) and optional BLAKE3 hashing of files and data
 //! - **Proof Format**: JSON and compact CBOR+Base64 serialization
 //! - **Attestations**: Blockchain attestation records
 //!

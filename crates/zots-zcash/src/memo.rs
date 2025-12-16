@@ -7,13 +7,13 @@
 //!
 //! ```text
 //! ┌────────────────┬────────────────┬────────────────┐
-//! │  ZOTS_MAGIC    │   SHA-256 Hash │    Padding     │
+//! │  ZOTS_MAGIC    │   Hash Digest  │    Padding     │
 //! │   (8 bytes)    │   (32 bytes)   │  (472 bytes)   │
 //! └────────────────┴────────────────┴────────────────┘
 //! ```
 //!
 //! - **ZOTS_MAGIC**: `\x00zOTS\x00\x00\x01` identifies zots memos
-//! - **Hash**: The 32-byte SHA-256 hash being timestamped
+//! - **Hash**: The 32-byte hash being timestamped
 //! - **Padding**: Zero-padded to 512 bytes total
 
 use zots_core::proof::ZOTS_MAGIC;

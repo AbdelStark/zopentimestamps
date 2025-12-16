@@ -16,7 +16,7 @@ pub fn run(proof_path: PathBuf) -> anyhow::Result<()> {
 
     print_info("File", &proof_path.display().to_string());
     print_info("Version", &proof.version.to_string());
-    print_hash(&proof.hash);
+    print_hash(&proof.hash, proof.hash_algorithm().name());
     print_info("Attestations", &proof.attestations.len().to_string());
     print_info(
         "Status",

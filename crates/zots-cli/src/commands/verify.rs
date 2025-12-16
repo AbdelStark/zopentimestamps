@@ -10,7 +10,7 @@
 
 use crate::output::*;
 use std::path::PathBuf;
-use zots_core::{TimestampProof, hash_file, hash_to_hex};
+use zots_core::{TimestampProof, hash_file_with, hash_to_hex};
 use zots_zcash::{ZcashConfig, ZotsWallet};
 
 pub async fn run(proof_path: PathBuf, file: Option<PathBuf>) -> anyhow::Result<()> {
@@ -19,15 +19,16 @@ pub async fn run(proof_path: PathBuf, file: Option<PathBuf>) -> anyhow::Result<(
     // Load proof
     let proof = TimestampProof::load(&proof_path)?;
     print_info("Proof", &proof_path.display().to_string());
-    print_hash(&proof.hash);
+    print_hash(&proof.hash, proof.hash_algorithm().name());
 
     // Get hash bytes for comparison
     let proof_hash_bytes = proof.hash_bytes()?;
+    let algorithm = proof.hash_algorithm();
 
     // Verify against original file if provided
     if let Some(file_path) = file {
         print_status("Verifying hash against original file...");
-        let file_hash = hash_file(&file_path)?;
+        let file_hash = hash_file_with(&file_path, algorithm)?;
 
         if file_hash == proof_hash_bytes {
             print_success("Hash matches original file");
@@ -35,6 +36,7 @@ pub async fn run(proof_path: PathBuf, file: Option<PathBuf>) -> anyhow::Result<(
             print_error("Hash does NOT match original file!");
             print_info("Expected", &proof.hash);
             print_info("Got", &hash_to_hex(&file_hash));
+            print_info("Algorithm", algorithm.name());
             return Ok(());
         }
     }

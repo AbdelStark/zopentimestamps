@@ -2,8 +2,9 @@
 //!
 //! Defines the command-line interface structure using clap's derive macros.
 
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
+use zots_core::HashAlgorithm;
 
 /// zOpenTimestamps - Zcash blockchain timestamping CLI
 ///
@@ -42,6 +43,10 @@ pub enum Commands {
         /// Output proof file path (default: <file>.zots or <hash>.zots)
         #[arg(short, long)]
         output: Option<PathBuf>,
+
+        /// Hash algorithm to use (sha256 or blake3)
+        #[arg(long, value_enum, default_value_t = HashAlgorithmArg::Sha256, value_name = "ALGO")]
+        hash_algorithm: HashAlgorithmArg,
 
         /// Don't wait for confirmation (create pending proof)
         #[arg(long)]
@@ -88,6 +93,22 @@ pub enum Commands {
 
     /// Launch interactive TUI mode
     Tui,
+}
+
+/// Hash algorithm option for CLI arguments
+#[derive(Copy, Clone, Debug, PartialEq, Eq, ValueEnum)]
+pub enum HashAlgorithmArg {
+    Sha256,
+    Blake3,
+}
+
+impl From<HashAlgorithmArg> for HashAlgorithm {
+    fn from(value: HashAlgorithmArg) -> Self {
+        match value {
+            HashAlgorithmArg::Sha256 => HashAlgorithm::Sha256,
+            HashAlgorithmArg::Blake3 => HashAlgorithm::Blake3,
+        }
+    }
 }
 
 #[derive(Subcommand)]

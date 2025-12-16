@@ -34,7 +34,7 @@
 //!     println!("Balance: {} ZEC", total as f64 / 100_000_000.0);
 //!
 //!     // Create timestamp transaction
-//!     let hash = [0u8; 32]; // SHA-256 hash to timestamp
+//!     let hash = [0u8; 32]; // 32-byte hash to timestamp
 //!     let result = wallet.create_timestamp_tx(&hash).await?;
 //!     println!("TXID: {}", result.txid);
 //!

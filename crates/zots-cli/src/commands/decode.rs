@@ -28,6 +28,7 @@ pub fn run(compact: String, output: Option<PathBuf>) -> anyhow::Result<()> {
 
     println!();
     print_info("Hash", &proof.hash);
+    print_info("Algorithm", proof.hash_algorithm().name());
     print_info("Attestations", &proof.attestations.len().to_string());
 
     if !proof.attestations.is_empty() {

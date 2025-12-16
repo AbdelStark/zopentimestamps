@@ -8,11 +8,11 @@ use std::collections::HashMap;
 use bip0039::{English, Mnemonic};
 use rand_core::OsRng;
 use tonic::transport::{Channel, ClientTlsConfig};
-use zcash_client_backend::data_api::wallet::{
-    ConfirmationsPolicy, create_proposed_transactions, propose_shielding,
-    propose_standard_transfer_to_address, SpendingKeys,
-};
 use zcash_client_backend::data_api::wallet::input_selection::GreedyInputSelector;
+use zcash_client_backend::data_api::wallet::{
+    ConfirmationsPolicy, SpendingKeys, create_proposed_transactions, propose_shielding,
+    propose_standard_transfer_to_address,
+};
 use zcash_client_backend::data_api::{AccountBirthday, AccountPurpose, WalletRead, WalletWrite};
 use zcash_client_backend::decrypt_transaction;
 use zcash_client_backend::fees::standard::SingleOutputChangeStrategy;
@@ -24,17 +24,17 @@ use zcash_client_backend::proto::service::{
 use zcash_client_backend::sync::run as sync_run;
 use zcash_client_backend::wallet::OvkPolicy;
 use zcash_client_memory::MemBlockCache;
+use zcash_client_sqlite::WalletDb;
 use zcash_client_sqlite::error::SqliteClientError;
 use zcash_client_sqlite::util::SystemClock;
 use zcash_client_sqlite::wallet::init::init_wallet_db;
-use zcash_client_sqlite::WalletDb;
 use zcash_keys::keys::UnifiedFullViewingKey;
 use zcash_primitives::transaction::Transaction;
 use zcash_proofs::prover::LocalTxProver;
+use zcash_protocol::ShieldedProtocol;
 use zcash_protocol::consensus::{BlockHeight, BranchId, TEST_NETWORK};
 use zcash_protocol::memo::MemoBytes;
 use zcash_protocol::value::Zatoshis;
-use zcash_protocol::ShieldedProtocol;
 use zip32::AccountId;
 
 use crate::config::ZcashConfig;
@@ -263,7 +263,8 @@ impl ZotsWallet {
             Some(s) => {
                 let mut breakdown = BalanceBreakdown::default();
                 for balance in s.account_balances().values() {
-                    breakdown.transparent += u64::from(balance.unshielded_balance().spendable_value());
+                    breakdown.transparent +=
+                        u64::from(balance.unshielded_balance().spendable_value());
                     breakdown.sapling += u64::from(balance.sapling_balance().spendable_value());
                     breakdown.orchard += u64::from(balance.orchard_balance().spendable_value());
                 }
@@ -560,7 +561,11 @@ impl ZotsWallet {
 
         // Get block height for decryption context
         let mined_height = block_height.map(BlockHeight::from_u32);
-        let chain_tip = self.get_block_height().await.ok().map(|h| BlockHeight::from_u32(h as u32));
+        let chain_tip = self
+            .get_block_height()
+            .await
+            .ok()
+            .map(|h| BlockHeight::from_u32(h as u32));
 
         // Decrypt the transaction to extract memos
         let decrypted = decrypt_transaction(&TEST_NETWORK, mined_height, chain_tip, &tx, &ufvks);

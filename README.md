@@ -37,6 +37,7 @@ Timestamp any file or hash on the Zcash blockchain to create cryptographic proof
 ## Features
 
 - **Timestamp files or hashes** - Create blockchain-anchored timestamps for any data
+- **Configurable hashing** - Default SHA-256 with optional BLAKE3 digests tracked in proofs
 - **On-chain verification** - Verify timestamps directly against the Zcash blockchain
 - **Shielded transactions** - Privacy-preserving using Orchard/Sapling protocols
 - **Embeddable proofs** - Compact CBOR+Base64 format for photos, screenshots, git commits
@@ -138,6 +139,9 @@ zots stamp document.pdf
 # Custom output path
 zots stamp document.pdf -o my-proof.zots
 
+# Use BLAKE3 instead of SHA-256
+zots stamp --hash-algorithm blake3 document.pdf
+
 # Don't wait for confirmation (creates pending proof)
 zots stamp document.pdf --no-wait
 ```
@@ -145,11 +149,14 @@ zots stamp document.pdf --no-wait
 ### Timestamp a Hash
 
 ```bash
-# SHA-256 hash (64 hex characters)
+# Hash digest (64 hex characters)
 zots stamp --hash e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
 
-# Git commit SHA-1 (40 hex characters, zero-padded to 64)
+# Git commit SHA-1 (40 hex characters, re-hashed with selected algorithm)
 zots stamp --hash abc123def456789...
+
+# Use BLAKE3 for either input style
+zots stamp --hash-algorithm blake3 --hash abc123def456789...
 ```
 
 ### Verify a Timestamp
@@ -215,6 +222,7 @@ Human-readable JSON for transparency and easy inspection:
 ```json
 {
   "version": 1,
+  "hash_algorithm": "sha256",
   "hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "attestations": [
     {
@@ -232,7 +240,8 @@ Human-readable JSON for transparency and easy inspection:
 | Field | Description |
 |-------|-------------|
 | `version` | Proof format version (currently 1) |
-| `hash` | SHA-256 hash of timestamped data (hex) |
+| `hash_algorithm` | Hash function (`sha256` default, `blake3` optional) |
+| `hash` | Hash digest of timestamped data (hex) |
 | `attestations` | List of blockchain attestations |
 | `attestations[].network` | "mainnet" or "testnet" |
 | `attestations[].txid` | Transaction ID (hex, display order) |
@@ -272,7 +281,7 @@ Timestamp: zots1o2d2ZXJzaW9uAWRoYXNoeEBhYmNkZWYxMjM0NTY3ODkw...
 ┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
 │   1. Hash   │───▶│   2. Memo   │───▶│ 3. Broadcast│───▶│  4. Confirm │
 │             │    │             │    │             │    │             │
-│ SHA-256 of  │    │ Encode hash │    │ Self-send   │    │ Block time  │
+│ Hash of     │    │ Encode hash │    │ Self-send   │    │ Block time  │
 │ your file   │    │ in tx memo  │    │ shielded tx │    │ = timestamp │
 └─────────────┘    └─────────────┘    └─────────────┘    └─────────────┘
                                                                 │
@@ -285,7 +294,7 @@ Timestamp: zots1o2d2ZXJzaW9uAWRoYXNoeEBhYmNkZWYxMjM0NTY3ODkw...
                                                          └─────────────┘
 ```
 
-1. **Hash**: Your file is hashed using SHA-256
+1. **Hash**: Your file is hashed (SHA-256 by default, optional BLAKE3)
 2. **Memo**: The hash is encoded in a Zcash shielded transaction memo field
 3. **Broadcast**: A self-send transaction preserves your privacy while anchoring the hash
 4. **Confirm**: Once mined, the block timestamp provides cryptographic proof of time
@@ -311,7 +320,7 @@ zopentimestamps/
 │   ├── zots-core/          # Core library
 │   │   ├── src/
 │   │   │   ├── lib.rs      # Public API
-│   │   │   ├── hash.rs     # SHA-256 hashing utilities
+│   │   │   ├── hash.rs     # Hashing utilities (SHA-256/BLAKE3)
 │   │   │   ├── proof.rs    # Proof types and serialization
 │   │   │   └── error.rs    # Error types
 │   │   └── Cargo.toml
