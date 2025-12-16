@@ -467,9 +467,11 @@ impl ZotsWallet {
         })
     }
 
-    /// Wait for transaction confirmation
+    /// Wait for transaction confirmation.
     ///
-    /// Polls the blockchain until the transaction is confirmed or max_blocks is reached.
+    /// Polls the lightwalletd tip until the height advances, then returns the
+    /// observed height plus a wall-clock timestamp for UX purposes. This is a
+    /// lightweight heuristic rather than a consensus-proof of inclusion.
     pub async fn wait_confirmation(
         &mut self,
         txid: &str,
@@ -482,6 +484,7 @@ impl ZotsWallet {
             let current_height = self.get_block_height().await?;
 
             if current_height > start_height {
+                // Use wall-clock time here; lightwalletd does not return block metadata
                 let block_time = chrono::Utc::now().timestamp() as u32;
                 return Ok(ConfirmationResult {
                     block_height: current_height as u32,
@@ -508,8 +511,11 @@ impl ZotsWallet {
     /// Verify a timestamp transaction by fetching it from the blockchain
     /// and checking that the memo contains the expected hash.
     ///
-    /// This provides cryptographic verification that the hash was actually
-    /// committed to the Zcash blockchain in the specified transaction.
+    /// The memo is decrypted with the wallet's viewing keys, so callers must
+    /// use the same seed (or an exported viewing key) that was used to create
+    /// the timestamp transaction. This provides cryptographic verification
+    /// that the hash was committed to the Zcash blockchain in the specified
+    /// transaction.
     pub async fn verify_timestamp_tx(
         &mut self,
         txid_bytes: &[u8; 32],

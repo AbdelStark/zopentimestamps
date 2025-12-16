@@ -1,6 +1,9 @@
 //! Terminal UI implementation using ratatui
 //!
-//! This module will be fully implemented in Phase 7.
+//! Wires up the event loop, keyboard handling, and screen rendering
+//! for the cypherpunk TUI. The TUI shares the same environment-based
+//! configuration as the CLI; make sure `ZOTS_*` variables are set
+//! before launching.
 
 mod app;
 mod ui;

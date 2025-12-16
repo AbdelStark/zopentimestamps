@@ -14,6 +14,7 @@ Timestamp any file or hash on the Zcash blockchain to create cryptographic proof
 - [Security Notice](#security-notice)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
+- [Configuration](#configuration)
 - [Usage](#usage)
 - [Proof Formats](#proof-formats)
 - [How It Works](#how-it-works)
@@ -116,6 +117,24 @@ zots stamp document.pdf
 zots info document.pdf.zots
 ```
 
+## Configuration
+
+Environment is read from a `.env` file or the current shell. Defaults are safe for testnet use.
+
+| Variable | Required | Default | Purpose |
+|----------|----------|---------|---------|
+| `ZOTS_SEED` | Yes | - | 24-word BIP-39 seed phrase |
+| `ZOTS_BIRTHDAY_HEIGHT` | No | `3717528` | Wallet birthday to speed up sync |
+| `ZOTS_LIGHTWALLETD` | No | `https://testnet.zec.rocks:443` | lightwalletd endpoint |
+| `ZOTS_NETWORK` | No | `testnet` | `testnet` only; mainnet intentionally discouraged |
+| `ZOTS_DATA_DIR` | No | `~/.zopentimestamps` | Wallet DB and proving parameter cache |
+
+Operational notes:
+
+- Verification requires the viewing keys of the wallet that created the timestamp (the memo is encrypted to your own address). Use the same seed when verifying, or export viewing keys to a watcher wallet.
+- To reset a stuck wallet, delete the DB at `${ZOTS_DATA_DIR}/wallet.db` and lower `ZOTS_BIRTHDAY_HEIGHT` before re-running commands.
+- The CLI and TUI share the same configuration; make sure environment variables are set before launching either.
+
 ## Usage
 
 ### Timestamp a File
@@ -150,6 +169,10 @@ zots verify document.pdf.zots
 # Also verify file hash matches
 zots verify document.pdf.zots -f document.pdf
 ```
+
+Verification decrypts the memo using your wallet's viewing keys. Use the same
+seed that created the timestamp (or export viewing keys to a watcher) or the
+memo cannot be inspected.
 
 ### View Proof Information
 
