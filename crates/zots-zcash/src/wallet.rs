@@ -3,6 +3,8 @@
 //! Provides wallet initialization, sync, and transaction creation
 //! for timestamping operations on the Zcash blockchain.
 
+use std::collections::HashMap;
+
 use bip0039::{English, Mnemonic};
 use rand_core::OsRng;
 use tonic::transport::{Channel, ClientTlsConfig};
@@ -12,11 +14,12 @@ use zcash_client_backend::data_api::wallet::{
 };
 use zcash_client_backend::data_api::wallet::input_selection::GreedyInputSelector;
 use zcash_client_backend::data_api::{AccountBirthday, AccountPurpose, WalletRead, WalletWrite};
+use zcash_client_backend::decrypt_transaction;
 use zcash_client_backend::fees::standard::SingleOutputChangeStrategy;
 use zcash_client_backend::fees::{DustOutputPolicy, StandardFeeRule};
 use zcash_client_backend::keys::UnifiedSpendingKey;
 use zcash_client_backend::proto::service::{
-    self, ChainSpec, RawTransaction, compact_tx_streamer_client::CompactTxStreamerClient,
+    self, ChainSpec, RawTransaction, TxFilter, compact_tx_streamer_client::CompactTxStreamerClient,
 };
 use zcash_client_backend::sync::run as sync_run;
 use zcash_client_backend::wallet::OvkPolicy;
@@ -25,15 +28,17 @@ use zcash_client_sqlite::error::SqliteClientError;
 use zcash_client_sqlite::util::SystemClock;
 use zcash_client_sqlite::wallet::init::init_wallet_db;
 use zcash_client_sqlite::WalletDb;
+use zcash_keys::keys::UnifiedFullViewingKey;
+use zcash_primitives::transaction::Transaction;
 use zcash_proofs::prover::LocalTxProver;
-use zcash_protocol::consensus::TEST_NETWORK;
+use zcash_protocol::consensus::{BlockHeight, BranchId, TEST_NETWORK};
 use zcash_protocol::memo::MemoBytes;
 use zcash_protocol::value::Zatoshis;
 use zcash_protocol::ShieldedProtocol;
 use zip32::AccountId;
 
 use crate::config::ZcashConfig;
-use crate::memo::create_timestamp_memo;
+use crate::memo::{create_timestamp_memo, parse_timestamp_memo};
 
 const SYNC_BATCH_SIZE: u32 = 1000;
 
@@ -62,6 +67,16 @@ pub struct BalanceBreakdown {
     pub sapling: u64,
     /// Orchard pool balance in zatoshis
     pub orchard: u64,
+}
+
+/// Result of verifying a timestamp transaction
+pub struct VerificationResult {
+    /// Whether the verification was successful
+    pub valid: bool,
+    /// The hash found in the memo (if any)
+    pub memo_hash: Option<[u8; 32]>,
+    /// Error message if verification failed
+    pub error: Option<String>,
 }
 
 type ZotsWalletDb =
@@ -488,5 +503,108 @@ impl ZotsWallet {
     /// Get the wallet configuration
     pub fn config(&self) -> &ZcashConfig {
         &self.config
+    }
+
+    /// Verify a timestamp transaction by fetching it from the blockchain
+    /// and checking that the memo contains the expected hash.
+    ///
+    /// This provides cryptographic verification that the hash was actually
+    /// committed to the Zcash blockchain in the specified transaction.
+    pub async fn verify_timestamp_tx(
+        &mut self,
+        txid_bytes: &[u8; 32],
+        expected_hash: &[u8; 32],
+        block_height: Option<u32>,
+    ) -> anyhow::Result<VerificationResult> {
+        // Fetch transaction from lightwalletd
+        // Note: lightwalletd expects txid in internal byte order (not display order)
+        let tx_filter = TxFilter {
+            block: None,
+            index: 0,
+            hash: txid_bytes.to_vec(),
+        };
+
+        let response = self
+            .client
+            .get_transaction(tx_filter)
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to fetch transaction: {:?}", e))?;
+
+        let raw_tx = response.into_inner();
+        if raw_tx.data.is_empty() {
+            return Ok(VerificationResult {
+                valid: false,
+                memo_hash: None,
+                error: Some("Transaction not found on blockchain".to_string()),
+            });
+        }
+
+        // Parse the raw transaction
+        let tx = Transaction::read(&raw_tx.data[..], BranchId::Nu6)
+            .map_err(|e| anyhow::anyhow!("Failed to parse transaction: {:?}", e))?;
+
+        // Get the viewing key for decryption
+        let usk = UnifiedSpendingKey::from_seed(&TEST_NETWORK, &self.seed, AccountId::ZERO)
+            .map_err(|e| anyhow::anyhow!("Failed to derive spending key: {:?}", e))?;
+        let ufvk = usk.to_unified_full_viewing_key();
+
+        // Create a map of viewing keys for decrypt_transaction
+        let mut ufvks: HashMap<u32, UnifiedFullViewingKey> = HashMap::new();
+        ufvks.insert(0, ufvk);
+
+        // Get block height for decryption context
+        let mined_height = block_height.map(BlockHeight::from_u32);
+        let chain_tip = self.get_block_height().await.ok().map(|h| BlockHeight::from_u32(h as u32));
+
+        // Decrypt the transaction to extract memos
+        let decrypted = decrypt_transaction(&TEST_NETWORK, mined_height, chain_tip, &tx, &ufvks);
+
+        // Check all decrypted outputs for matching memo
+        for output in decrypted.sapling_outputs() {
+            if let Some(hash) = parse_timestamp_memo(output.memo().as_slice()) {
+                if hash == *expected_hash {
+                    return Ok(VerificationResult {
+                        valid: true,
+                        memo_hash: Some(hash),
+                        error: None,
+                    });
+                }
+            }
+        }
+
+        // Check Orchard outputs
+        for output in decrypted.orchard_outputs() {
+            if let Some(hash) = parse_timestamp_memo(output.memo().as_slice()) {
+                if hash == *expected_hash {
+                    return Ok(VerificationResult {
+                        valid: true,
+                        memo_hash: Some(hash),
+                        error: None,
+                    });
+                }
+            }
+        }
+
+        // If we have decrypted outputs but none match, verification failed
+        let total_outputs = decrypted.sapling_outputs().len() + decrypted.orchard_outputs().len();
+
+        if total_outputs > 0 {
+            Ok(VerificationResult {
+                valid: false,
+                memo_hash: None,
+                error: Some("Transaction found but memo hash does not match".to_string()),
+            })
+        } else {
+            // No outputs could be decrypted - might be from a different wallet
+            Ok(VerificationResult {
+                valid: false,
+                memo_hash: None,
+                error: Some(
+                    "Could not decrypt transaction outputs. \
+                    This may be a transaction from a different wallet."
+                        .to_string(),
+                ),
+            })
+        }
     }
 }

@@ -3,6 +3,7 @@
 use crate::output::*;
 use std::path::PathBuf;
 use zots_core::{TimestampProof, hash_file, hash_to_hex};
+use zots_zcash::{ZcashConfig, ZotsWallet};
 
 pub async fn run(proof_path: PathBuf, file: Option<PathBuf>) -> anyhow::Result<()> {
     print_header("Verifying Timestamp");
@@ -35,17 +36,34 @@ pub async fn run(proof_path: PathBuf, file: Option<PathBuf>) -> anyhow::Result<(
 
     let att = &proof.attestations[0];
 
-    // TODO: In a full implementation, we would fetch the transaction
-    // from the blockchain and verify the memo contains the hash.
-    // For MVP, we trust the proof file.
+    // Verify against the blockchain by fetching the transaction
+    // and checking the memo contains the expected hash
+    print_status("Verifying against blockchain...");
 
-    println!();
-    print_success("VALID TIMESTAMP");
-    print_info("Network", &att.network.to_string());
-    print_info("Block", &att.block_height.to_string());
-    print_info("Time", &att.timestamp().to_rfc3339());
-    print_info("TXID", &att.txid_hex());
-    print_link("Explorer", &att.explorer_link());
+    let config = ZcashConfig::from_env()?;
+    let mut wallet = ZotsWallet::new(config).await?;
+    wallet.init_account().await?;
+
+    let result = wallet
+        .verify_timestamp_tx(&att.txid, &proof.hash, Some(att.block_height))
+        .await?;
+
+    if result.valid {
+        println!();
+        print_success("VALID TIMESTAMP (verified on-chain)");
+        print_info("Network", &att.network.to_string());
+        print_info("Block", &att.block_height.to_string());
+        print_info("Time", &att.timestamp().to_rfc3339());
+        print_info("TXID", &att.txid_hex());
+        print_link("Explorer", &att.explorer_link());
+    } else {
+        println!();
+        print_error("VERIFICATION FAILED");
+        if let Some(error) = result.error {
+            print_info("Reason", &error);
+        }
+        print_info("TXID", &att.txid_hex());
+    }
 
     Ok(())
 }
