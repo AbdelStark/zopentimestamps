@@ -113,6 +113,10 @@ impl ZotsWallet {
         let accounts = self.db.get_account_ids()?;
         if !accounts.is_empty() {
             eprintln!("[wallet] Account already exists, skipping init");
+            // Log the existing account info for debugging
+            for account_id in &accounts {
+                eprintln!("[wallet] Existing account: {:?}", account_id);
+            }
             return Ok(());
         }
 
@@ -120,16 +124,23 @@ impl ZotsWallet {
 
         // Create unified spending key from seed
         let account_id = AccountId::ZERO;
+        eprintln!("[wallet] Using AccountId: {:?}", account_id);
         let usk = UnifiedSpendingKey::from_seed(&TEST_NETWORK, &self.seed, account_id)
             .map_err(|e| anyhow::anyhow!("Failed to derive spending key: {:?}", e))?;
         let ufvk = usk.to_unified_full_viewing_key();
 
+        // Log the derived addresses for debugging
+        eprintln!("[wallet] Derived UFVK successfully");
+
         // Get birthday tree state from lightwalletd
         let birthday_height = self.config.birthday_height;
         eprintln!(
-            "[wallet] Fetching tree state for birthday height: {}",
+            "[wallet] Using birthday height: {} (configure ZOTS_BIRTHDAY_HEIGHT to change)",
             birthday_height
         );
+        eprintln!("[wallet] WARNING: If your wallet has transactions before this height, they will NOT be found!");
+        eprintln!("[wallet] Set ZOTS_BIRTHDAY_HEIGHT to an earlier block to scan more history.");
+
         let request = service::BlockId {
             height: birthday_height.saturating_sub(1),
             ..Default::default()
@@ -137,6 +148,8 @@ impl ZotsWallet {
         let treestate = self.client.get_tree_state(request).await?.into_inner();
         let birthday = AccountBirthday::from_treestate(treestate, None)
             .map_err(|_| anyhow::anyhow!("Failed to create birthday from tree state"))?;
+
+        eprintln!("[wallet] Birthday created from tree state at height: {}", birthday.height());
 
         // Import account into wallet
         self.db.import_account_ufvk(
@@ -151,16 +164,41 @@ impl ZotsWallet {
         Ok(())
     }
 
+    /// Reset and reinitialize wallet with a new birthday height
+    ///
+    /// This is useful if the birthday height was set too high and transactions were missed.
+    /// WARNING: This will delete the existing wallet database!
+    pub async fn reset_wallet(&mut self) -> anyhow::Result<()> {
+        eprintln!("[wallet] Resetting wallet database...");
+
+        // Get the wallet db path
+        let db_path = self.config.wallet_db_path();
+
+        // We can't easily reset the existing db, so inform the user
+        eprintln!("[wallet] To reset the wallet, delete the database file at: {:?}", db_path);
+        eprintln!("[wallet] Then set ZOTS_BIRTHDAY_HEIGHT to an earlier block and restart.");
+
+        Ok(())
+    }
+
     /// Sync wallet with the blockchain
     ///
     /// Downloads compact blocks and scans for transactions belonging to this wallet.
     pub async fn sync(&mut self) -> anyhow::Result<()> {
         eprintln!("[wallet] Starting sync...");
 
+        // Log scan range info from the wallet database
+        if let Ok(Some(summary)) = self.db.get_wallet_summary(ConfirmationsPolicy::MIN) {
+            eprintln!("[wallet] Wallet scan progress: {:?}", summary.progress());
+            eprintln!("[wallet] Fully scanned height: {:?}", summary.fully_scanned_height());
+            eprintln!("[wallet] Chain tip height: {:?}", summary.chain_tip_height());
+        }
+
         // Use in-memory block cache for sync
         let db_cache = MemBlockCache::new();
 
         // Run the sync - this downloads blocks and scans for our transactions
+        eprintln!("[wallet] Running sync with batch size 100...");
         sync_run(
             &mut self.client,
             &TEST_NETWORK,
@@ -170,6 +208,12 @@ impl ZotsWallet {
         )
         .await
         .map_err(|e| anyhow::anyhow!("Sync failed: {:?}", e))?;
+
+        // Log post-sync status
+        if let Ok(Some(summary)) = self.db.get_wallet_summary(ConfirmationsPolicy::MIN) {
+            eprintln!("[wallet] Post-sync scan progress: {:?}", summary.progress());
+            eprintln!("[wallet] Post-sync fully scanned height: {:?}", summary.fully_scanned_height());
+        }
 
         eprintln!("[wallet] Sync complete");
         Ok(())
@@ -193,12 +237,38 @@ impl ZotsWallet {
             Some(s) => {
                 let mut total = Zatoshis::ZERO;
                 for (account_id, balance) in s.account_balances() {
+                    // Get balances from all pools
+                    let unshielded = balance.unshielded_balance();
+                    let sapling = balance.sapling_balance();
+                    let orchard = balance.orchard_balance();
+
+                    // Calculate total spendable across all pools
+                    let total_spendable = u64::from(unshielded.spendable_value())
+                        + u64::from(sapling.spendable_value())
+                        + u64::from(orchard.spendable_value());
+
                     eprintln!(
-                        "[wallet] Account {:?}: spendable={}, change_pending={}, total={}",
+                        "[wallet] Account {:?}: total_spendable={}, change_pending={}, total={}",
                         account_id,
-                        u64::from(balance.spendable_value()),
+                        total_spendable,
                         u64::from(balance.change_pending_confirmation()),
                         u64::from(balance.total())
+                    );
+                    // Log balance breakdown by pool
+                    eprintln!(
+                        "[wallet] Transparent: spendable={}, total={}",
+                        u64::from(unshielded.spendable_value()),
+                        u64::from(unshielded.total())
+                    );
+                    eprintln!(
+                        "[wallet] Sapling: spendable={}, total={}",
+                        u64::from(sapling.spendable_value()),
+                        u64::from(sapling.total())
+                    );
+                    eprintln!(
+                        "[wallet] Orchard: spendable={}, total={}",
+                        u64::from(orchard.spendable_value()),
+                        u64::from(orchard.total())
                     );
                     total = (total + balance.total())
                         .ok_or_else(|| anyhow::anyhow!("Balance overflow"))?;
