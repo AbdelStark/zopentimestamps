@@ -284,11 +284,6 @@ impl App {
         self.task_running = false;
     }
 
-    /// Check if a background task is currently running
-    pub fn is_busy(&self) -> bool {
-        self.task_running
-    }
-
     /// Handle keyboard input in current state
     pub fn handle_input(&mut self, key: KeyCode) -> Result<()> {
         match key {
