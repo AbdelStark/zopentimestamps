@@ -1,4 +1,9 @@
-//! Info command implementation
+//! Info command implementation.
+//!
+//! Displays detailed information about a timestamp proof file, including:
+//! - File hash
+//! - Attestation details (network, txid, block, time)
+//! - Compact embeddable format
 
 use crate::output::*;
 use std::path::PathBuf;

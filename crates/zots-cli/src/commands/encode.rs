@@ -1,4 +1,12 @@
-//! Encode command implementation
+//! Encode command implementation.
+//!
+//! Converts a proof to compact CBOR+Base64 format for embedding in files,
+//! metadata, git commits, or QR codes.
+//!
+//! Input can be:
+//! - A .zots file path
+//! - A JSON string
+//! - An existing compact string (for validation)
 
 use crate::output::*;
 use std::path::PathBuf;

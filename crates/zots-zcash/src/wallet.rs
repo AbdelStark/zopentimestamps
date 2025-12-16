@@ -246,7 +246,7 @@ impl ZotsWallet {
         match summary {
             Some(s) => {
                 let mut total = Zatoshis::ZERO;
-                for (_account_id, balance) in s.account_balances() {
+                for balance in s.account_balances().values() {
                     total = (total + balance.total())
                         .ok_or_else(|| anyhow::anyhow!("Balance overflow"))?;
                 }
@@ -262,7 +262,7 @@ impl ZotsWallet {
         match summary {
             Some(s) => {
                 let mut breakdown = BalanceBreakdown::default();
-                for (_account_id, balance) in s.account_balances() {
+                for balance in s.account_balances().values() {
                     breakdown.transparent += u64::from(balance.unshielded_balance().spendable_value());
                     breakdown.sapling += u64::from(balance.sapling_balance().spendable_value());
                     breakdown.orchard += u64::from(balance.orchard_balance().spendable_value());
@@ -561,27 +561,27 @@ impl ZotsWallet {
 
         // Check all decrypted outputs for matching memo
         for output in decrypted.sapling_outputs() {
-            if let Some(hash) = parse_timestamp_memo(output.memo().as_slice()) {
-                if hash == *expected_hash {
-                    return Ok(VerificationResult {
-                        valid: true,
-                        memo_hash: Some(hash),
-                        error: None,
-                    });
-                }
+            if let Some(hash) = parse_timestamp_memo(output.memo().as_slice())
+                && hash == *expected_hash
+            {
+                return Ok(VerificationResult {
+                    valid: true,
+                    memo_hash: Some(hash),
+                    error: None,
+                });
             }
         }
 
         // Check Orchard outputs
         for output in decrypted.orchard_outputs() {
-            if let Some(hash) = parse_timestamp_memo(output.memo().as_slice()) {
-                if hash == *expected_hash {
-                    return Ok(VerificationResult {
-                        valid: true,
-                        memo_hash: Some(hash),
-                        error: None,
-                    });
-                }
+            if let Some(hash) = parse_timestamp_memo(output.memo().as_slice())
+                && hash == *expected_hash
+            {
+                return Ok(VerificationResult {
+                    valid: true,
+                    memo_hash: Some(hash),
+                    error: None,
+                });
             }
         }
 

@@ -1,15 +1,25 @@
-//! CLI argument parsing using clap
+//! CLI argument parsing using clap.
+//!
+//! Defines the command-line interface structure using clap's derive macros.
 
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
 /// zOpenTimestamps - Zcash blockchain timestamping CLI
+///
+/// Timestamp files and hashes on the Zcash blockchain with privacy-preserving
+/// shielded transactions. Proofs can be verified against the blockchain.
+///
+/// WARNING: This is experimental software. Do not use on mainnet with real funds.
 #[derive(Parser)]
 #[command(name = "zots")]
 #[command(
     author,
     version,
-    about = "Zcash blockchain timestamping with cypherpunk TUI"
+    about = "Zcash blockchain timestamping with cypherpunk TUI",
+    long_about = "Timestamp files and hashes on the Zcash blockchain.\n\n\
+                  WARNING: This is experimental software. Do not use on mainnet with real funds.\n\
+                  The code has not been audited. Use only on testnet for development and testing."
 )]
 #[command(propagate_version = true)]
 pub struct Cli {

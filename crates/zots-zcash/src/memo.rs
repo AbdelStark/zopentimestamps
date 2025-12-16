@@ -1,4 +1,20 @@
-//! Memo field encoding for timestamp data
+//! Memo field encoding for timestamp data.
+//!
+//! Zcash shielded transactions support a 512-byte encrypted memo field.
+//! This module encodes/decodes timestamp hashes in that field.
+//!
+//! ## Memo Format
+//!
+//! ```text
+//! ┌────────────────┬────────────────┬────────────────┐
+//! │  ZOTS_MAGIC    │   SHA-256 Hash │    Padding     │
+//! │   (8 bytes)    │   (32 bytes)   │  (472 bytes)   │
+//! └────────────────┴────────────────┴────────────────┘
+//! ```
+//!
+//! - **ZOTS_MAGIC**: `\x00zOTS\x00\x00\x01` identifies zots memos
+//! - **Hash**: The 32-byte SHA-256 hash being timestamped
+//! - **Padding**: Zero-padded to 512 bytes total
 
 use zots_core::proof::ZOTS_MAGIC;
 

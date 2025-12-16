@@ -1,7 +1,47 @@
-//! .zots proof format
+//! Timestamp proof format and serialization.
 //!
-//! Human-readable JSON format for timestamp proofs with Zcash attestations.
-//! Also supports compact CBOR+Base64 encoding for embedding in files.
+//! This module provides types for representing and serializing timestamp proofs.
+//!
+//! ## Formats
+//!
+//! Two serialization formats are supported:
+//!
+//! ### JSON Format (.zots files)
+//!
+//! Human-readable JSON for transparency and interoperability:
+//!
+//! ```json
+//! {
+//!   "version": 1,
+//!   "hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+//!   "attestations": [...]
+//! }
+//! ```
+//!
+//! ### Compact Format (embeddable)
+//!
+//! CBOR+Base64url encoding for embedding in files, metadata, or QR codes:
+//!
+//! ```text
+//! zots1o2d2ZXJzaW9uAWRoYXNoeEBhYmNkZWYxMjM0NTY3ODkw...
+//! ```
+//!
+//! ## Example
+//!
+//! ```rust
+//! use zots_core::{TimestampProof, ZcashAttestation, Network};
+//!
+//! // Create a proof
+//! let hash = [0u8; 32];
+//! let mut proof = TimestampProof::new(hash);
+//!
+//! // Serialize to JSON
+//! let json = proof.serialize().unwrap();
+//!
+//! // Serialize to compact format
+//! let compact = proof.to_compact().unwrap();
+//! assert!(compact.starts_with("zots1"));
+//! ```
 
 use crate::{Error, Hash256, Result};
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};

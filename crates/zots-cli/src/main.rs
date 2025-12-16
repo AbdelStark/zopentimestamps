@@ -1,6 +1,33 @@
-//! zots - zOpenTimestamps CLI
+//! # zots - zOpenTimestamps CLI
 //!
 //! A Zcash blockchain timestamping tool with cypherpunk TUI.
+//!
+//! ## Commands
+//!
+//! - `stamp` - Timestamp a file or hash on the Zcash blockchain
+//! - `verify` - Verify a timestamp proof against the blockchain
+//! - `info` - Display proof information
+//! - `encode` - Convert proof to compact embeddable format
+//! - `decode` - Convert compact format back to JSON
+//! - `wallet` - Wallet management (sync, balance, address)
+//! - `tui` - Launch interactive terminal UI
+//!
+//! ## Usage
+//!
+//! ```bash
+//! # Timestamp a file
+//! zots stamp document.pdf
+//!
+//! # Verify a proof
+//! zots verify document.pdf.zots
+//!
+//! # Launch TUI
+//! zots tui
+//! ```
+//!
+//! ## Security Warning
+//!
+//! This is experimental software. Do not use on mainnet with real funds.
 
 mod cli;
 mod commands;

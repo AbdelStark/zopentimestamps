@@ -1,70 +1,119 @@
 # zOpenTimestamps
 
-A Zcash blockchain timestamping tool with a cypherpunk TUI.
+A Zcash blockchain timestamping tool inspired by [OpenTimestamps](https://opentimestamps.org/).
 
-Timestamp any file or hash on the Zcash blockchain to create cryptographic proof that the data existed at a specific point in time.
+Timestamp any file or hash on the Zcash blockchain to create cryptographic proof that data existed at a specific point in time. Features privacy-preserving shielded transactions and embeddable proof format.
+
+> **Warning**
+> This is experimental software. **Do not use on mainnet with real funds.**
+> The code has not been audited. Use only on testnet for development and testing.
+
+## Table of Contents
+
+- [Features](#features)
+- [Security Notice](#security-notice)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Usage](#usage)
+- [Proof Formats](#proof-formats)
+- [How It Works](#how-it-works)
+- [Architecture](#architecture)
+- [Development](#development)
+- [Contributing](#contributing)
+- [License](#license)
+- [Acknowledgments](#acknowledgments)
 
 ## Features
 
-- **Timestamp files or hashes** on the Zcash blockchain
-- **Verify timestamps** with .zots proof files
-- **Embeddable proofs** - compact CBOR+Base64 format for photos, screenshots, git commits
-- **Cypherpunk TUI** with ASCII art interface
-- **Testnet support** for development and testing
-- **Shielded transactions** using Orchard/Sapling protocols
+- **Timestamp files or hashes** - Create blockchain-anchored timestamps for any data
+- **On-chain verification** - Verify timestamps directly against the Zcash blockchain
+- **Shielded transactions** - Privacy-preserving using Orchard/Sapling protocols
+- **Embeddable proofs** - Compact CBOR+Base64 format for photos, screenshots, git commits
+- **Human-readable format** - JSON proof files for transparency and interoperability
+- **Cypherpunk TUI** - ASCII art terminal interface
+- **Testnet support** - Safe development and testing environment
+
+## Security Notice
+
+> **This software is provided for educational and experimental purposes only.**
+
+- **NOT AUDITED**: This code has not undergone security audits
+- **TESTNET ONLY**: Do not use on mainnet with real ZEC
+- **EXPERIMENTAL**: APIs and formats may change without notice
+- **NO WARRANTY**: See [LICENSE](LICENSE) for full terms
+
+If you discover security vulnerabilities, please report them responsibly by opening a GitHub issue or contacting the maintainers directly.
 
 ## Installation
 
+### Prerequisites
+
+- Rust 1.85.0+ (2024 edition)
+- Git
+
+### Build from Source
+
 ```bash
 # Clone the repository
-git clone https://github.com/example/zopentimestamps
+git clone https://github.com/AbdelStark/zopentimestamps
 cd zopentimestamps
 
-# Build
+# Build release binary
 cargo build --release
 
-# The binary will be at target/release/zots
+# Binary location: target/release/zots
 ```
 
-## Configuration
+### Verify Installation
 
-Set environment variables or create a `.env` file:
+```bash
+./target/release/zots --version
+./target/release/zots --help
+```
+
+## Quick Start
+
+### 1. Configure Environment
+
+Create a `.env` file or set environment variables:
 
 ```bash
 # Required: 24-word BIP-39 seed phrase
+# Generate one at: https://iancoleman.io/bip39/
 export ZOTS_SEED="your twenty four word seed phrase here ..."
 
 # Optional (defaults shown)
-export ZOTS_BIRTHDAY_HEIGHT=3717528
+export ZOTS_BIRTHDAY_HEIGHT=3717528        # Wallet birthday for faster sync
 export ZOTS_LIGHTWALLETD="https://testnet.zec.rocks:443"
-export ZOTS_NETWORK=testnet
+export ZOTS_NETWORK=testnet                 # IMPORTANT: Keep as testnet!
 export ZOTS_DATA_DIR=~/.zopentimestamps
 ```
 
-## Getting Started
-
-### 1. Get Testnet Funds
-
-First, get your wallet address and fund it with testnet ZEC:
+### 2. Get Testnet Funds
 
 ```bash
 # Show your receiving address
 zots wallet address
 
-# Get testnet funds from the faucet
-# https://testnet.zecfaucet.com/
+# Get testnet ZEC from faucet:
+# https://faucet.zecpages.com/
 ```
 
-### 2. Sync Your Wallet
+### 3. Sync and Check Balance
 
 ```bash
 zots wallet sync
+zots wallet balance
 ```
 
-### 3. Check Balance
+### 4. Create Your First Timestamp
 
 ```bash
-zots wallet balance
+# Timestamp a file
+zots stamp document.pdf
+
+# View the proof
+zots info document.pdf.zots
 ```
 
 ## Usage
@@ -72,11 +121,11 @@ zots wallet balance
 ### Timestamp a File
 
 ```bash
-# Timestamp a file (creates <filename>.zots)
+# Basic usage (creates <filename>.zots)
 zots stamp document.pdf
 
-# Specify output path
-zots stamp document.pdf -o proof.zots
+# Custom output path
+zots stamp document.pdf -o my-proof.zots
 
 # Don't wait for confirmation (creates pending proof)
 zots stamp document.pdf --no-wait
@@ -85,38 +134,36 @@ zots stamp document.pdf --no-wait
 ### Timestamp a Hash
 
 ```bash
-# Timestamp a SHA-256 hash
+# SHA-256 hash (64 hex characters)
 zots stamp --hash e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
 
-# Timestamp a git commit (40-char SHA-1, padded to SHA-256)
-zots stamp --hash abc123def456...
+# Git commit SHA-1 (40 hex characters, zero-padded to 64)
+zots stamp --hash abc123def456789...
 ```
 
 ### Verify a Timestamp
 
 ```bash
-# Verify a proof file
+# Verify proof against blockchain
 zots verify document.pdf.zots
 
-# Verify against the original file
+# Also verify file hash matches
 zots verify document.pdf.zots -f document.pdf
 ```
 
-### Show Proof Information
+### View Proof Information
 
 ```bash
 zots info document.pdf.zots
 ```
 
-### Encode/Decode Compact Format
-
-Convert between JSON (.zots) and compact (embeddable) format:
+### Convert Proof Formats
 
 ```bash
-# Encode a .zots file to compact format
+# Encode to compact format (for embedding)
 zots encode document.pdf.zots
 
-# Decode a compact string to JSON
+# Decode compact format to JSON
 zots decode "zots1o2d2ZXJzaW9u..."
 
 # Save decoded proof to file
@@ -126,36 +173,29 @@ zots decode "zots1o2d2ZXJzaW9u..." -o proof.zots
 ### Wallet Commands
 
 ```bash
-# Sync wallet with blockchain
-zots wallet sync
-
-# Show balance
-zots wallet balance
-
-# Show receiving address
-zots wallet address
-
-# Show full wallet info
-zots wallet info
+zots wallet sync      # Sync with blockchain
+zots wallet balance   # Show balance breakdown
+zots wallet address   # Show receiving address
+zots wallet info      # Show all wallet information
 ```
 
 ### Interactive TUI
-
-Launch the cypherpunk TUI interface:
 
 ```bash
 zots tui
 ```
 
-Controls:
+**Controls:**
 - `S` - Stamp screen
 - `V` - Verify screen
 - `W` - Wallet screen
 - `Q` / `Esc` - Quit/Back
 
-## Proof Format (.zots)
+## Proof Formats
 
-Timestamp proofs are stored in human-readable JSON format:
+### JSON Format (.zots files)
+
+Human-readable JSON for transparency and easy inspection:
 
 ```json
 {
@@ -173,87 +213,188 @@ Timestamp proofs are stored in human-readable JSON format:
 }
 ```
 
-Fields:
-- `version`: Proof format version (currently 1)
-- `hash`: SHA-256 hash of the timestamped data (hex string)
-- `attestations`: List of blockchain attestations confirming the timestamp
-  - `network`: "mainnet" or "testnet"
-  - `txid`: Transaction ID (hex string, display byte order)
-  - `block_height`: Block number where the transaction was confirmed
-  - `block_time`: Unix timestamp of the block
-  - `memo_offset`: Offset in memo field (usually 0)
+**Fields:**
+| Field | Description |
+|-------|-------------|
+| `version` | Proof format version (currently 1) |
+| `hash` | SHA-256 hash of timestamped data (hex) |
+| `attestations` | List of blockchain attestations |
+| `attestations[].network` | "mainnet" or "testnet" |
+| `attestations[].txid` | Transaction ID (hex, display order) |
+| `attestations[].block_height` | Confirmation block number |
+| `attestations[].block_time` | Block Unix timestamp |
+| `attestations[].memo_offset` | Memo field offset (usually 0) |
 
-## Compact Format (Embeddable)
+### Compact Format (Embeddable)
 
-For embedding timestamps in files (EXIF metadata, git commits, QR codes), proofs can be encoded to a compact CBOR+Base64 format:
+For embedding timestamps in files, metadata, or QR codes:
 
 ```
 zots1o2d2ZXJzaW9uAWRoYXNoeEBhYmNkZWYxMjM0NTY3ODkw...
 ```
 
-The format:
+**Structure:**
 - Prefix: `zots1` (version identifier)
 - Payload: CBOR-encoded proof, Base64url-encoded (no padding)
 
-Use cases:
+**Use Cases:**
 - **Screenshots**: Embed in EXIF/XMP metadata
-- **Photos**: Store in image metadata
-- **Git commits**: Include in commit message trailer
-- **Documents**: Embed in PDF metadata
+- **Photos**: Store in image metadata fields
+- **Git commits**: Include as commit message trailer
+- **Documents**: Embed in PDF/Office metadata
+- **QR codes**: Compact enough for QR encoding
 
-Example git commit with embedded timestamp:
+**Example git commit:**
 ```
-Fix authentication bug
+feat: implement new feature
 
 Timestamp: zots1o2d2ZXJzaW9uAWRoYXNoeEBhYmNkZWYxMjM0NTY3ODkw...
 ```
 
 ## How It Works
 
+```
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│   1. Hash   │───▶│   2. Memo   │───▶│ 3. Broadcast│───▶│  4. Confirm │
+│             │    │             │    │             │    │             │
+│ SHA-256 of  │    │ Encode hash │    │ Self-send   │    │ Block time  │
+│ your file   │    │ in tx memo  │    │ shielded tx │    │ = timestamp │
+└─────────────┘    └─────────────┘    └─────────────┘    └─────────────┘
+                                                                │
+                                                                ▼
+                                                         ┌─────────────┐
+                                                         │  5. Proof   │
+                                                         │             │
+                                                         │ .zots file  │
+                                                         │ with txid   │
+                                                         └─────────────┘
+```
+
 1. **Hash**: Your file is hashed using SHA-256
-2. **Memo**: The hash is encoded in a Zcash transaction memo field
-3. **Broadcast**: A self-send transaction is broadcast to the network
-4. **Confirm**: Once confirmed, the block provides the timestamp
-5. **Proof**: A .zots proof file stores the attestation
+2. **Memo**: The hash is encoded in a Zcash shielded transaction memo field
+3. **Broadcast**: A self-send transaction preserves your privacy while anchoring the hash
+4. **Confirm**: Once mined, the block timestamp provides cryptographic proof of time
+5. **Proof**: A `.zots` proof file stores the attestation for later verification
+
+### Verification
+
+During verification, zots:
+1. Loads the proof file
+2. Fetches the transaction from the blockchain
+3. Decrypts the memo field using viewing keys
+4. Verifies the memo contains the expected hash
+5. Returns the block timestamp as proof of existence
 
 ## Architecture
 
 ```
 zopentimestamps/
+├── Cargo.toml              # Workspace configuration
+├── LICENSE                 # MIT License
+├── README.md               # This file
 ├── crates/
-│   ├── zots-core/     # Hash and proof types
-│   ├── zots-zcash/    # Wallet and transaction handling
-│   └── zots-cli/      # CLI application and TUI
+│   ├── zots-core/          # Core library
+│   │   ├── src/
+│   │   │   ├── lib.rs      # Public API
+│   │   │   ├── hash.rs     # SHA-256 hashing utilities
+│   │   │   ├── proof.rs    # Proof types and serialization
+│   │   │   └── error.rs    # Error types
+│   │   └── Cargo.toml
+│   │
+│   ├── zots-zcash/         # Zcash integration
+│   │   ├── src/
+│   │   │   ├── lib.rs      # Public API
+│   │   │   ├── wallet.rs   # Wallet operations
+│   │   │   ├── config.rs   # Configuration
+│   │   │   └── memo.rs     # Memo encoding
+│   │   └── Cargo.toml
+│   │
+│   └── zots-cli/           # CLI application
+│       ├── src/
+│       │   ├── main.rs     # Entry point
+│       │   ├── cli.rs      # Argument parsing
+│       │   ├── commands/   # Command implementations
+│       │   ├── output.rs   # Terminal output helpers
+│       │   └── tui/        # Terminal UI
+│       └── Cargo.toml
+│
+└── docs/                   # Additional documentation
 ```
 
-## Dependencies
+### Crate Responsibilities
 
-- Rust 1.85.0+ (2024 edition)
-- librustzcash (rev 9f47de6)
-- Zcash testnet lightwalletd server
+| Crate | Purpose |
+|-------|---------|
+| `zots-core` | Hash functions, proof format, serialization |
+| `zots-zcash` | Wallet, transactions, lightwalletd integration |
+| `zots-cli` | CLI commands, TUI, user interaction |
 
 ## Development
 
+### Prerequisites
+
+- Rust 1.85.0+ with 2024 edition support
+- A Zcash testnet lightwalletd server (default: testnet.zec.rocks)
+
+### Build
+
 ```bash
-# Build
-cargo build
-
-# Run tests
-cargo test
-
-# Run clippy
-cargo clippy
-
-# Format code
-cargo fmt
+cargo build          # Debug build
+cargo build --release # Release build
 ```
+
+### Test
+
+```bash
+cargo test           # Run all tests
+cargo test -p zots-core  # Test specific crate
+```
+
+### Lint
+
+```bash
+cargo clippy         # Run linter
+cargo fmt            # Format code
+cargo fmt -- --check # Check formatting
+```
+
+### Documentation
+
+```bash
+cargo doc --open     # Generate and open docs
+```
+
+## Contributing
+
+Contributions are welcome! Please:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Make your changes
+4. Run tests (`cargo test`)
+5. Run lints (`cargo clippy && cargo fmt`)
+6. Commit your changes (`git commit -m 'Add amazing feature'`)
+7. Push to the branch (`git push origin feature/amazing-feature`)
+8. Open a Pull Request
+
+### Code Style
+
+- Follow Rust conventions and idioms
+- Add documentation for public APIs
+- Include tests for new functionality
+- Keep commits atomic and well-described
 
 ## License
 
-MIT
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Related
+## Acknowledgments
 
-- [OpenTimestamps](https://opentimestamps.org/) - Bitcoin timestamping
+- [OpenTimestamps](https://opentimestamps.org/) - Original Bitcoin timestamping protocol
 - [Zcash](https://z.cash/) - Privacy-focused cryptocurrency
 - [librustzcash](https://github.com/zcash/librustzcash) - Zcash Rust libraries
+- [Zooko Wilcox](https://twitter.com/zoaborex) - For the vision of embedded timestamp proofs
+
+---
+
+**Disclaimer**: This software is experimental and provided "as is" without warranty. Do not use with real funds. Always verify proofs independently before relying on them for any purpose.

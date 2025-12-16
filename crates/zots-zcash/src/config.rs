@@ -1,4 +1,22 @@
-//! Configuration for Zcash wallet operations
+//! Configuration for Zcash wallet operations.
+//!
+//! Configuration is loaded from environment variables or a `.env` file.
+//!
+//! ## Environment Variables
+//!
+//! | Variable | Required | Default | Description |
+//! |----------|----------|---------|-------------|
+//! | `ZOTS_SEED` | Yes | - | 24-word BIP-39 seed phrase |
+//! | `ZOTS_BIRTHDAY_HEIGHT` | No | 3717528 | Wallet birthday for faster sync |
+//! | `ZOTS_LIGHTWALLETD` | No | testnet.zec.rocks:443 | Lightwalletd server URL |
+//! | `ZOTS_NETWORK` | No | testnet | Network: "testnet" or "mainnet" |
+//! | `ZOTS_DATA_DIR` | No | ~/.zopentimestamps | Data directory path |
+//!
+//! ## Security Warning
+//!
+//! - Never commit your seed phrase to version control
+//! - Use environment variables or a `.env` file (add to .gitignore)
+//! - Only use testnet - mainnet is not recommended
 
 use std::path::PathBuf;
 use zots_core::Network;

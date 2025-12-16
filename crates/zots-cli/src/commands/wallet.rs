@@ -1,4 +1,10 @@
-//! Wallet command implementations
+//! Wallet command implementations.
+//!
+//! Provides wallet management operations:
+//! - `sync` - Sync wallet state with the blockchain
+//! - `balance` - Show balance breakdown by pool (Orchard, Sapling, Transparent)
+//! - `address` - Show unified receiving address
+//! - `info` - Show comprehensive wallet information
 
 use crate::output::*;
 use indicatif::{ProgressBar, ProgressStyle};

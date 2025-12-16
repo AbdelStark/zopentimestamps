@@ -1,4 +1,12 @@
-//! Verify command implementation
+//! Verify command implementation.
+//!
+//! Verifies a timestamp proof by:
+//! 1. Loading the proof file
+//! 2. Optionally verifying the hash matches an original file
+//! 3. Fetching the transaction from the blockchain
+//! 4. Decrypting the memo and verifying it contains the expected hash
+//!
+//! This provides cryptographic proof that the data existed at the block time.
 
 use crate::output::*;
 use std::path::PathBuf;

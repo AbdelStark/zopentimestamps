@@ -1,4 +1,12 @@
-//! Stamp command implementation
+//! Stamp command implementation.
+//!
+//! Creates a timestamp by broadcasting a shielded transaction with the hash
+//! encoded in the memo field. The resulting proof can be used to verify that
+//! the data existed at the time the transaction was confirmed.
+//!
+//! ## Warning
+//!
+//! This command sends a real blockchain transaction. Only use on testnet.
 
 use crate::output::*;
 use indicatif::{ProgressBar, ProgressStyle};

@@ -1,4 +1,7 @@
-//! Decode command implementation
+//! Decode command implementation.
+//!
+//! Converts a compact proof string (zots1...) back to human-readable JSON.
+//! Useful for inspecting embedded proofs or converting to .zots files.
 
 use crate::output::*;
 use std::path::PathBuf;
