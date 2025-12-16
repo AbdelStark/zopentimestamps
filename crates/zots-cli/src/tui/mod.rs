@@ -65,8 +65,7 @@ async fn run_app(
                 AppState::Stamp | AppState::Verify | AppState::Wallet => match key.code {
                     KeyCode::Esc => {
                         app.state = AppState::Menu;
-                        app.input_buffer.clear();
-                        app.result_message.clear();
+                        app.reset_state();
                     }
                     _ => app.handle_input(key.code).await?,
                 },

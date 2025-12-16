@@ -364,26 +364,6 @@ cargo fmt -- --check # Check formatting
 cargo doc --open     # Generate and open docs
 ```
 
-## Contributing
-
-Contributions are welcome! Please:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Make your changes
-4. Run tests (`cargo test`)
-5. Run lints (`cargo clippy && cargo fmt`)
-6. Commit your changes (`git commit -m 'Add amazing feature'`)
-7. Push to the branch (`git push origin feature/amazing-feature`)
-8. Open a Pull Request
-
-### Code Style
-
-- Follow Rust conventions and idioms
-- Add documentation for public APIs
-- Include tests for new functionality
-- Keep commits atomic and well-described
-
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
@@ -393,7 +373,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [OpenTimestamps](https://opentimestamps.org/) - Original Bitcoin timestamping protocol
 - [Zcash](https://z.cash/) - Privacy-focused cryptocurrency
 - [librustzcash](https://github.com/zcash/librustzcash) - Zcash Rust libraries
-- [Zooko Wilcox](https://twitter.com/zoaborex) - For the vision of embedded timestamp proofs
+- [Zooko](https://x.com/zooko/status/1998440166244102664?s=46) - For the vision of embedded timestamp proofs (see this [X post](https://x.com/zooko/status/1998440166244102664?s=46))
 
 ---
 
