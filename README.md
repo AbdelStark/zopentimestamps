@@ -31,26 +31,8 @@ Timestamp any file or hash on the Zcash blockchain to create cryptographic proof
 - **Shielded transactions** - Privacy-preserving using Orchard/Sapling protocols
 - **Embeddable proofs** - Compact CBOR+Base64 format for photos, screenshots, git commits
 - **Human-readable format** - JSON proof files for transparency and interoperability
-- **Cypherpunk TUI** - ASCII art terminal interface
-- **Testnet support** - Safe development and testing environment
-
-## Security Notice
-
-> **This software is provided for educational and experimental purposes only.**
-
-- **NOT AUDITED**: This code has not undergone security audits
-- **TESTNET ONLY**: Do not use on mainnet with real ZEC
-- **EXPERIMENTAL**: APIs and formats may change without notice
-- **NO WARRANTY**: See [LICENSE](LICENSE) for full terms
-
-If you discover security vulnerabilities, please report them responsibly by opening a GitHub issue or contacting the maintainers directly.
 
 ## Installation
-
-### Prerequisites
-
-- Rust 1.85.0+ (2024 edition)
-- Git
 
 ### Build from Source
 
@@ -352,51 +334,26 @@ zopentimestamps/
 | `zots-zcash` | Wallet, transactions, lightwalletd integration |
 | `zots-cli` | CLI commands, TUI, user interaction |
 
-## Development
-
-### Prerequisites
-
-- Rust 1.85.0+ with 2024 edition support
-- A Zcash testnet lightwalletd server (default: testnet.zec.rocks)
-
-### Build
-
-```bash
-cargo build          # Debug build
-cargo build --release # Release build
-```
-
-### Test
-
-```bash
-cargo test           # Run all tests
-cargo test -p zots-core  # Test specific crate
-```
-
-### Lint
-
-```bash
-cargo clippy         # Run linter
-cargo fmt            # Format code
-cargo fmt -- --check # Check formatting
-```
-
-### Documentation
-
-```bash
-cargo doc --open     # Generate and open docs
-```
-
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+
+## Security Notice
+
+> **This software is provided for educational and experimental purposes only.**
+
+- **NOT AUDITED**: This code has not undergone security audits
+- **TESTNET ONLY**: Do not use on mainnet with real ZEC
+- **EXPERIMENTAL**: APIs and formats may change without notice
+- **NO WARRANTY**: See [LICENSE](LICENSE) for full terms
 
 ## Acknowledgments
 
 - [OpenTimestamps](https://opentimestamps.org/) - Original Bitcoin timestamping protocol
 - [Zcash](https://z.cash/) - Privacy-focused cryptocurrency
 - [librustzcash](https://github.com/zcash/librustzcash) - Zcash Rust libraries
-- [Zooko](https://x.com/zooko/status/1998440166244102664?s=46) - For the vision of embedded timestamp proofs (see this [X post](https://x.com/zooko/status/1998440166244102664?s=46))
+- [Zooko](https://x.com/zooko/status/1998440166244102664?s=46) - For the vision of embedded timestamp proofs on Zcash (see this [X post](https://x.com/zooko/status/1998440166244102664?s=46))
 
 ---
 
