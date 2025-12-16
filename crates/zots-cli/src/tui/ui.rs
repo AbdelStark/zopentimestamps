@@ -146,13 +146,6 @@ fn draw_stamp(f: &mut Frame, area: Rect, app: &App) {
                 Style::default().fg(Color::Gray),
             )));
         }
-        OperationPhase::Hashing => {
-            content.push(Line::from(vec![
-                Span::styled(app.spinner(), Style::default().fg(Color::Yellow)),
-                Span::raw(" "),
-                Span::styled("Hashing file...", Style::default().fg(Color::Yellow)),
-            ]));
-        }
         OperationPhase::Syncing => {
             content.push(Line::from(vec![
                 Span::styled(app.spinner(), Style::default().fg(Color::Yellow)),

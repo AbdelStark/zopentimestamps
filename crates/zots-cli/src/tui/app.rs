@@ -4,10 +4,12 @@
 //! - Navigation between screens (Menu, Stamp, Verify, Wallet)
 //! - Multi-step input flows with progress tracking
 //! - Async operation phases with spinner animation
+//! - Background task execution for non-blocking UI
 
 use anyhow::Result;
 use crossterm::event::KeyCode;
 use std::path::PathBuf;
+use tokio::sync::mpsc;
 use zots_core::{TimestampProof, ZcashAttestation, hash_file, hash_from_hex, hash_to_hex};
 use zots_zcash::{ZcashConfig, ZotsWallet};
 
@@ -28,14 +30,12 @@ pub enum AppState {
 pub enum OperationPhase {
     /// Waiting for user input
     Input,
-    /// Hashing a file
-    Hashing,
     /// Syncing wallet with blockchain
     Syncing,
     /// Creating and broadcasting transaction
     Broadcasting,
     /// Waiting for block confirmation
-    WaitingConfirmation { txid: String, attempts: u32 },
+    WaitingConfirmation { txid: String },
     /// Operation completed successfully
     Complete,
     /// Operation failed
@@ -55,12 +55,31 @@ pub enum VerifyStep {
     Results,
 }
 
+/// Messages sent from background tasks to update UI
+#[derive(Debug, Clone)]
+pub enum TaskMessage {
+    /// Update operation phase
+    Phase(OperationPhase),
+    /// Update status message
+    Status(String),
+    /// Stamp operation completed successfully
+    StampComplete(StampResult),
+    /// Stamp operation failed
+    StampFailed(String),
+    /// Verify operation completed
+    VerifyComplete(VerifyResult),
+    /// Verify operation failed
+    VerifyFailed(String),
+    /// Wallet sync completed
+    SyncComplete { block_height: u64, balance: u64 },
+    /// Wallet sync failed
+    SyncFailed(String),
+}
+
 /// TUI application state
 pub struct App {
     /// Current screen
     pub state: AppState,
-    /// Wallet instance (if config available)
-    pub wallet: Option<ZotsWallet>,
     /// Configuration (if available)
     pub config: Option<ZcashConfig>,
     /// Current block height
@@ -89,6 +108,12 @@ pub struct App {
     pub stamp_result: Option<StampResult>,
     /// Verify result details for display
     pub verify_result: Option<VerifyResult>,
+    /// Channel receiver for background task updates
+    task_rx: mpsc::Receiver<TaskMessage>,
+    /// Channel sender for background tasks (cloned when spawning)
+    task_tx: mpsc::Sender<TaskMessage>,
+    /// Whether a background task is currently running
+    pub task_running: bool,
 }
 
 /// Result of a successful stamp operation
@@ -121,32 +146,30 @@ impl App {
     pub async fn new() -> Result<Self> {
         let config = ZcashConfig::from_env().ok();
 
-        let (wallet, block_height, balance) = if let Some(ref cfg) = config {
+        // Create channel for background task communication
+        let (task_tx, task_rx) = mpsc::channel(32);
+
+        // Try to get initial block height (quick operation)
+        let block_height = if let Some(ref cfg) = config {
             match ZotsWallet::new(cfg.clone()).await {
-                Ok(mut w) => {
-                    let _ = w.init_account().await;
-                    let h = w.get_block_height().await.unwrap_or(0);
-                    let b = w.get_balance().unwrap_or(0);
-                    (Some(w), h, b)
-                }
-                Err(_) => (None, 0, 0),
+                Ok(mut w) => w.get_block_height().await.unwrap_or(0),
+                Err(_) => 0,
             }
         } else {
-            (None, 0, 0)
+            0
         };
 
         let status = if config.is_some() {
-            "Ready".to_string()
+            "Ready - Press S to stamp, V to verify".to_string()
         } else {
             "No wallet configured (set ZOTS_SEED)".to_string()
         };
 
         Ok(Self {
             state: AppState::Menu,
-            wallet,
             config,
             block_height,
-            balance,
+            balance: 0,
             status_message: status,
             input_buffer: String::new(),
             result_message: String::new(),
@@ -158,15 +181,73 @@ impl App {
             verify_hash: None,
             stamp_result: None,
             verify_result: None,
+            task_rx,
+            task_tx,
+            task_running: false,
         })
     }
 
-    /// Handle periodic updates
+    /// Handle periodic updates - polls for background task messages
     pub async fn tick(&mut self) -> Result<()> {
         // Advance spinner for animation during async operations
-        if !matches!(self.operation_phase, OperationPhase::Input | OperationPhase::Complete | OperationPhase::Failed) {
+        if self.task_running {
             self.spinner_frame = (self.spinner_frame + 1) % SPINNER_FRAMES.len();
         }
+
+        // Poll for messages from background tasks (non-blocking)
+        while let Ok(msg) = self.task_rx.try_recv() {
+            match msg {
+                TaskMessage::Phase(phase) => {
+                    self.operation_phase = phase;
+                }
+                TaskMessage::Status(status) => {
+                    self.status_message = status;
+                }
+                TaskMessage::StampComplete(result) => {
+                    self.stamp_result = Some(result);
+                    self.operation_phase = OperationPhase::Complete;
+                    self.task_running = false;
+                }
+                TaskMessage::StampFailed(error) => {
+                    self.result_message = error;
+                    self.result_is_error = true;
+                    self.operation_phase = OperationPhase::Failed;
+                    self.task_running = false;
+                }
+                TaskMessage::VerifyComplete(result) => {
+                    self.verify_result = Some(result);
+                    self.verify_step = VerifyStep::Results;
+                    self.operation_phase = if self.verify_result.as_ref().map(|r| r.valid).unwrap_or(false) {
+                        OperationPhase::Complete
+                    } else {
+                        OperationPhase::Failed
+                    };
+                    self.task_running = false;
+                }
+                TaskMessage::VerifyFailed(error) => {
+                    self.result_message = error;
+                    self.result_is_error = true;
+                    self.operation_phase = OperationPhase::Failed;
+                    self.task_running = false;
+                }
+                TaskMessage::SyncComplete { block_height, balance } => {
+                    self.block_height = block_height;
+                    self.balance = balance;
+                    self.status_message = "Synced".to_string();
+                    self.result_message = "Wallet synced successfully".to_string();
+                    self.result_is_error = false;
+                    self.operation_phase = OperationPhase::Complete;
+                    self.task_running = false;
+                }
+                TaskMessage::SyncFailed(error) => {
+                    self.result_message = format!("Sync failed: {}", error);
+                    self.result_is_error = true;
+                    self.operation_phase = OperationPhase::Failed;
+                    self.task_running = false;
+                }
+            }
+        }
+
         Ok(())
     }
 
@@ -186,19 +267,30 @@ impl App {
         self.verify_hash = None;
         self.stamp_result = None;
         self.verify_result = None;
+        self.task_running = false;
+    }
+
+    /// Check if a background task is currently running
+    pub fn is_busy(&self) -> bool {
+        self.task_running
     }
 
     /// Handle keyboard input in current state
-    pub async fn handle_input(&mut self, key: KeyCode) -> Result<()> {
+    pub fn handle_input(&mut self, key: KeyCode) -> Result<()> {
         match key {
             KeyCode::Char(c) => {
-                self.input_buffer.push(c);
+                // Don't accept input while task is running
+                if !self.task_running {
+                    self.input_buffer.push(c);
+                }
             }
             KeyCode::Backspace => {
-                self.input_buffer.pop();
+                if !self.task_running {
+                    self.input_buffer.pop();
+                }
             }
             KeyCode::Enter => {
-                self.process_input().await?;
+                self.process_input()?;
             }
             _ => {}
         }
@@ -206,44 +298,26 @@ impl App {
     }
 
     /// Process the current input based on state
-    async fn process_input(&mut self) -> Result<()> {
+    fn process_input(&mut self) -> Result<()> {
+        // Don't process if a task is already running
+        if self.task_running {
+            return Ok(());
+        }
+
         match self.state {
             AppState::Stamp => {
-                // Only process if in input phase
                 if matches!(self.operation_phase, OperationPhase::Input) {
-                    self.process_stamp().await;
+                    self.start_stamp_task();
                 }
             }
             AppState::Verify => {
-                self.process_verify().await;
+                self.process_verify();
             }
             AppState::Wallet => {
                 if self.input_buffer.to_lowercase() == "s"
                     || self.input_buffer.to_lowercase() == "sync"
                 {
-                    self.operation_phase = OperationPhase::Syncing;
-                    self.status_message = "Syncing...".to_string();
-                    if let Some(ref mut wallet) = self.wallet {
-                        match wallet.sync().await {
-                            Ok(_) => {
-                                self.block_height = wallet.get_block_height().await.unwrap_or(0);
-                                self.balance = wallet.get_balance().unwrap_or(0);
-                                self.status_message = "Synced".to_string();
-                                self.result_message = "Wallet synced successfully".to_string();
-                                self.result_is_error = false;
-                                self.operation_phase = OperationPhase::Complete;
-                            }
-                            Err(e) => {
-                                self.result_message = format!("Sync failed: {}", e);
-                                self.result_is_error = true;
-                                self.operation_phase = OperationPhase::Failed;
-                            }
-                        }
-                    } else {
-                        self.result_message = "No wallet configured".to_string();
-                        self.result_is_error = true;
-                        self.operation_phase = OperationPhase::Failed;
-                    }
+                    self.start_sync_task();
                 }
             }
             AppState::Menu => {}
@@ -252,8 +326,8 @@ impl App {
         Ok(())
     }
 
-    /// Process stamp input - file path or hex hash
-    async fn process_stamp(&mut self) {
+    /// Start stamp operation as background task
+    fn start_stamp_task(&mut self) {
         let input = self.input_buffer.trim().to_string();
         if input.is_empty() {
             self.result_message = "Please enter a file path or hash".to_string();
@@ -261,20 +335,20 @@ impl App {
             return;
         }
 
-        // Check if wallet is available
-        if self.wallet.is_none() {
-            self.result_message = "No wallet configured (set ZOTS_SEED)".to_string();
-            self.result_is_error = true;
-            self.operation_phase = OperationPhase::Failed;
-            return;
-        }
+        // Check if config is available
+        let config = match &self.config {
+            Some(c) => c.clone(),
+            None => {
+                self.result_message = "No wallet configured (set ZOTS_SEED)".to_string();
+                self.result_is_error = true;
+                self.operation_phase = OperationPhase::Failed;
+                return;
+            }
+        };
 
-        // Determine if input is a file or hash
+        // Validate input and compute hash (fast, synchronous)
         let path = PathBuf::from(&input);
         let (hash_bytes, output_path) = if path.exists() {
-            // Hash the file
-            self.operation_phase = OperationPhase::Hashing;
-            self.status_message = "Hashing file...".to_string();
             match hash_file(&path) {
                 Ok(h) => {
                     let output = PathBuf::from(format!(
@@ -291,7 +365,6 @@ impl App {
                 }
             }
         } else if input.len() >= 40 {
-            // Try parsing as hex hash
             match hash_from_hex(&input) {
                 Ok(h) => {
                     let output = PathBuf::from(format!("{}.zots", &input[..16]));
@@ -311,108 +384,46 @@ impl App {
             return;
         };
 
-        let hash_hex = hash_to_hex(&hash_bytes);
+        // Mark as running and update UI
+        self.task_running = true;
+        self.operation_phase = OperationPhase::Syncing;
+        self.status_message = "Starting stamp operation...".to_string();
 
-        // Sync wallet
+        // Clone sender for background task
+        let tx = self.task_tx.clone();
+        let network = config.network;
+
+        // Spawn background task
+        tokio::spawn(async move {
+            run_stamp_task(tx, config, hash_bytes, output_path, network).await;
+        });
+    }
+
+    /// Start wallet sync as background task
+    fn start_sync_task(&mut self) {
+        let config = match &self.config {
+            Some(c) => c.clone(),
+            None => {
+                self.result_message = "No wallet configured".to_string();
+                self.result_is_error = true;
+                self.operation_phase = OperationPhase::Failed;
+                return;
+            }
+        };
+
+        self.task_running = true;
         self.operation_phase = OperationPhase::Syncing;
         self.status_message = "Syncing wallet...".to_string();
 
-        let wallet = self.wallet.as_mut().unwrap();
-        if let Err(e) = wallet.sync().await {
-            self.result_message = format!("Sync failed: {}", e);
-            self.result_is_error = true;
-            self.operation_phase = OperationPhase::Failed;
-            return;
-        }
+        let tx = self.task_tx.clone();
 
-        // Update balance after sync
-        self.block_height = wallet.get_block_height().await.unwrap_or(0);
-        self.balance = wallet.get_balance().unwrap_or(0);
-
-        // Create timestamp transaction
-        self.operation_phase = OperationPhase::Broadcasting;
-        self.status_message = "Creating and broadcasting transaction...".to_string();
-
-        let tx_result = match wallet.create_timestamp_tx(&hash_bytes).await {
-            Ok(r) => r,
-            Err(e) => {
-                self.result_message = format!("Transaction failed: {}", e);
-                self.result_is_error = true;
-                self.operation_phase = OperationPhase::Failed;
-                self.status_message = "Transaction failed".to_string();
-                return;
-            }
-        };
-
-        let txid = tx_result.txid.clone();
-
-        // Wait for confirmation
-        self.operation_phase = OperationPhase::WaitingConfirmation {
-            txid: txid.clone(),
-            attempts: 0,
-        };
-        self.status_message = format!("Waiting for confirmation (TXID: {}...)", &txid[..12]);
-
-        let confirmation = match wallet.wait_confirmation(&txid, 10).await {
-            Ok(c) => c,
-            Err(e) => {
-                // Save pending proof even if confirmation fails
-                let proof = TimestampProof::new(hash_bytes);
-                let _ = proof.save(&output_path);
-
-                self.result_message = format!(
-                    "TX broadcast but confirmation timed out: {}\nPending proof saved: {}",
-                    e,
-                    output_path.display()
-                );
-                self.result_is_error = true;
-                self.operation_phase = OperationPhase::Failed;
-                self.status_message = "Confirmation timeout".to_string();
-                return;
-            }
-        };
-
-        // Get network from config
-        let network = self.config.as_ref().map(|c| c.network).unwrap_or(zots_core::Network::Testnet);
-
-        // Create confirmed proof with attestation
-        let mut proof = TimestampProof::new(hash_bytes);
-        proof.add_attestation(ZcashAttestation::new(
-            network,
-            tx_result.txid_bytes,
-            confirmation.block_height,
-            confirmation.block_time,
-            0,
-        ));
-
-        // Save proof
-        if let Err(e) = proof.save(&output_path) {
-            self.result_message = format!("Save error: {}", e);
-            self.result_is_error = true;
-            self.operation_phase = OperationPhase::Failed;
-            return;
-        }
-
-        // Generate compact format
-        let compact = proof.to_compact().unwrap_or_else(|_| "Error generating compact format".to_string());
-
-        // Store result for display
-        self.stamp_result = Some(StampResult {
-            hash: hash_hex,
-            txid: txid.clone(),
-            block_height: confirmation.block_height,
-            block_time: confirmation.block_time as u64,
-            output_path: output_path.display().to_string(),
-            compact,
+        tokio::spawn(async move {
+            run_sync_task(tx, config).await;
         });
-
-        self.result_is_error = false;
-        self.operation_phase = OperationPhase::Complete;
-        self.status_message = format!("Confirmed in block {}", confirmation.block_height);
     }
 
     /// Process verify input - multi-step: file/hash, then proof path
-    async fn process_verify(&mut self) {
+    fn process_verify(&mut self) {
         let input = self.input_buffer.trim().to_string();
 
         match self.verify_step {
@@ -423,10 +434,9 @@ impl App {
                     return;
                 }
 
-                // Determine if input is a file or hash
+                // Determine if input is a file or hash (synchronous, fast)
                 let path = PathBuf::from(&input);
                 if path.exists() {
-                    // Hash the file
                     match hash_file(&path) {
                         Ok(h) => {
                             self.verify_hash = Some(h);
@@ -441,7 +451,6 @@ impl App {
                         }
                     }
                 } else if input.len() >= 40 {
-                    // Try parsing as hex hash
                     match hash_from_hex(&input) {
                         Ok(h) => {
                             self.verify_hash = Some(h);
@@ -456,12 +465,15 @@ impl App {
                         }
                     }
                 } else {
-                    self.result_message =
-                        "File not found and input is not a valid hash".to_string();
+                    self.result_message = "File not found and input is not a valid hash".to_string();
                     self.result_is_error = true;
                 }
             }
             VerifyStep::ProofPath => {
+                if self.task_running {
+                    return;
+                }
+
                 if input.is_empty() {
                     self.result_message = "Please enter a proof file path (.zots)".to_string();
                     self.result_is_error = true;
@@ -475,7 +487,7 @@ impl App {
                     return;
                 }
 
-                // Load proof
+                // Load and validate proof (fast, synchronous)
                 let proof = match TimestampProof::load(&path) {
                     Ok(p) => p,
                     Err(e) => {
@@ -485,7 +497,6 @@ impl App {
                     }
                 };
 
-                // Check hash matches
                 let proof_hash_bytes = match proof.hash_bytes() {
                     Ok(h) => h,
                     Err(e) => {
@@ -515,7 +526,6 @@ impl App {
                     return;
                 }
 
-                // Check if proof has attestations
                 if proof.attestations.is_empty() {
                     self.verify_result = Some(VerifyResult {
                         hash: proof.hash.clone(),
@@ -533,30 +543,28 @@ impl App {
                     return;
                 }
 
-                // Verify on blockchain
-                self.verify_step = VerifyStep::Verifying;
-                self.operation_phase = OperationPhase::Syncing;
-                self.status_message = "Verifying against blockchain...".to_string();
-
-                // Check if wallet is available
-                if self.wallet.is_none() {
-                    // Can't verify on-chain without wallet, show proof info only
-                    let att = &proof.attestations[0];
-                    self.verify_result = Some(VerifyResult {
-                        hash: proof.hash.clone(),
-                        valid: true, // Assume valid since we can't verify
-                        network: att.network.to_string(),
-                        block_height: att.block_height,
-                        timestamp: att.timestamp().to_rfc3339(),
-                        txid: att.txid_hex().to_string(),
-                        explorer_link: att.explorer_link(),
-                        error: Some("Cannot verify on-chain (no wallet configured)".to_string()),
-                        file_hash_matches,
-                    });
-                    self.verify_step = VerifyStep::Results;
-                    self.operation_phase = OperationPhase::Complete;
-                    return;
-                }
+                // Start blockchain verification as background task
+                let config = match &self.config {
+                    Some(c) => c.clone(),
+                    None => {
+                        // No wallet, show proof info only
+                        let att = &proof.attestations[0];
+                        self.verify_result = Some(VerifyResult {
+                            hash: proof.hash.clone(),
+                            valid: true,
+                            network: att.network.to_string(),
+                            block_height: att.block_height,
+                            timestamp: att.timestamp().to_rfc3339(),
+                            txid: att.txid_hex().to_string(),
+                            explorer_link: att.explorer_link(),
+                            error: Some("Cannot verify on-chain (no wallet configured)".to_string()),
+                            file_hash_matches,
+                        });
+                        self.verify_step = VerifyStep::Results;
+                        self.operation_phase = OperationPhase::Complete;
+                        return;
+                    }
+                };
 
                 let att = &proof.attestations[0];
                 let txid_bytes = match att.txid_bytes() {
@@ -569,53 +577,32 @@ impl App {
                     }
                 };
 
-                let wallet = self.wallet.as_mut().unwrap();
-                let _ = wallet.init_account().await;
+                // Prepare data for background task
+                let verify_data = VerifyTaskData {
+                    proof_hash: proof.hash.clone(),
+                    proof_hash_bytes,
+                    txid_bytes,
+                    block_height: att.block_height,
+                    network: att.network.to_string(),
+                    timestamp: att.timestamp().to_rfc3339(),
+                    txid: att.txid_hex().to_string(),
+                    explorer_link: att.explorer_link(),
+                    file_hash_matches,
+                };
 
-                let result = wallet
-                    .verify_timestamp_tx(&txid_bytes, &proof_hash_bytes, Some(att.block_height))
-                    .await;
+                self.task_running = true;
+                self.verify_step = VerifyStep::Verifying;
+                self.operation_phase = OperationPhase::Syncing;
+                self.status_message = "Verifying against blockchain...".to_string();
 
-                match result {
-                    Ok(vr) => {
-                        self.verify_result = Some(VerifyResult {
-                            hash: proof.hash.clone(),
-                            valid: vr.valid,
-                            network: att.network.to_string(),
-                            block_height: att.block_height,
-                            timestamp: att.timestamp().to_rfc3339(),
-                            txid: att.txid_hex().to_string(),
-                            explorer_link: att.explorer_link(),
-                            error: vr.error,
-                            file_hash_matches,
-                        });
-                        self.operation_phase = if vr.valid {
-                            OperationPhase::Complete
-                        } else {
-                            OperationPhase::Failed
-                        };
-                    }
-                    Err(e) => {
-                        self.verify_result = Some(VerifyResult {
-                            hash: proof.hash.clone(),
-                            valid: false,
-                            network: att.network.to_string(),
-                            block_height: att.block_height,
-                            timestamp: att.timestamp().to_rfc3339(),
-                            txid: att.txid_hex().to_string(),
-                            explorer_link: att.explorer_link(),
-                            error: Some(format!("Verification error: {}", e)),
-                            file_hash_matches,
-                        });
-                        self.operation_phase = OperationPhase::Failed;
-                    }
-                }
+                let tx = self.task_tx.clone();
 
-                self.verify_step = VerifyStep::Results;
-                self.status_message = "Verification complete".to_string();
+                tokio::spawn(async move {
+                    run_verify_task(tx, config, verify_data).await;
+                });
             }
             VerifyStep::Verifying | VerifyStep::Results => {
-                // Do nothing - operation in progress or already showing results
+                // Do nothing
             }
         }
     }
@@ -626,5 +613,197 @@ impl App {
             .as_ref()
             .map(|c| c.network.name())
             .unwrap_or("unknown")
+    }
+}
+
+/// Data needed for verify background task
+struct VerifyTaskData {
+    proof_hash: String,
+    proof_hash_bytes: [u8; 32],
+    txid_bytes: [u8; 32],
+    block_height: u32,
+    network: String,
+    timestamp: String,
+    txid: String,
+    explorer_link: String,
+    file_hash_matches: Option<bool>,
+}
+
+/// Background task for stamp operation
+async fn run_stamp_task(
+    tx: mpsc::Sender<TaskMessage>,
+    config: ZcashConfig,
+    hash_bytes: [u8; 32],
+    output_path: PathBuf,
+    network: zots_core::Network,
+) {
+    let hash_hex = hash_to_hex(&hash_bytes);
+
+    // Syncing phase
+    let _ = tx.send(TaskMessage::Phase(OperationPhase::Syncing)).await;
+    let _ = tx.send(TaskMessage::Status("Syncing wallet...".to_string())).await;
+
+    let mut wallet = match ZotsWallet::new(config).await {
+        Ok(w) => w,
+        Err(e) => {
+            let _ = tx.send(TaskMessage::StampFailed(format!("Wallet error: {}", e))).await;
+            return;
+        }
+    };
+
+    if let Err(e) = wallet.init_account().await {
+        let _ = tx.send(TaskMessage::StampFailed(format!("Account init error: {}", e))).await;
+        return;
+    }
+
+    if let Err(e) = wallet.sync().await {
+        let _ = tx.send(TaskMessage::StampFailed(format!("Sync failed: {}", e))).await;
+        return;
+    }
+
+    // Broadcasting phase
+    let _ = tx.send(TaskMessage::Phase(OperationPhase::Broadcasting)).await;
+    let _ = tx.send(TaskMessage::Status("Creating and broadcasting transaction...".to_string())).await;
+
+    let tx_result = match wallet.create_timestamp_tx(&hash_bytes).await {
+        Ok(r) => r,
+        Err(e) => {
+            let _ = tx.send(TaskMessage::StampFailed(format!("Transaction failed: {}", e))).await;
+            return;
+        }
+    };
+
+    let txid = tx_result.txid.clone();
+
+    // Waiting for confirmation phase
+    let _ = tx.send(TaskMessage::Phase(OperationPhase::WaitingConfirmation {
+        txid: txid.clone(),
+    })).await;
+    let _ = tx.send(TaskMessage::Status(format!("Waiting for confirmation (TXID: {}...)", &txid[..12]))).await;
+
+    let confirmation = match wallet.wait_confirmation(&txid, 10).await {
+        Ok(c) => c,
+        Err(e) => {
+            // Save pending proof
+            let proof = TimestampProof::new(hash_bytes);
+            let _ = proof.save(&output_path);
+
+            let _ = tx.send(TaskMessage::StampFailed(format!(
+                "TX broadcast but confirmation timed out: {}\nPending proof saved: {}",
+                e, output_path.display()
+            ))).await;
+            return;
+        }
+    };
+
+    // Create and save proof
+    let mut proof = TimestampProof::new(hash_bytes);
+    proof.add_attestation(ZcashAttestation::new(
+        network,
+        tx_result.txid_bytes,
+        confirmation.block_height,
+        confirmation.block_time,
+        0,
+    ));
+
+    if let Err(e) = proof.save(&output_path) {
+        let _ = tx.send(TaskMessage::StampFailed(format!("Save error: {}", e))).await;
+        return;
+    }
+
+    let compact = proof.to_compact().unwrap_or_else(|_| "Error generating compact format".to_string());
+
+    let _ = tx.send(TaskMessage::StampComplete(StampResult {
+        hash: hash_hex,
+        txid,
+        block_height: confirmation.block_height,
+        block_time: confirmation.block_time as u64,
+        output_path: output_path.display().to_string(),
+        compact,
+    })).await;
+}
+
+/// Background task for wallet sync
+async fn run_sync_task(tx: mpsc::Sender<TaskMessage>, config: ZcashConfig) {
+    let _ = tx.send(TaskMessage::Phase(OperationPhase::Syncing)).await;
+    let _ = tx.send(TaskMessage::Status("Syncing wallet...".to_string())).await;
+
+    let mut wallet = match ZotsWallet::new(config).await {
+        Ok(w) => w,
+        Err(e) => {
+            let _ = tx.send(TaskMessage::SyncFailed(format!("Wallet error: {}", e))).await;
+            return;
+        }
+    };
+
+    if let Err(e) = wallet.init_account().await {
+        let _ = tx.send(TaskMessage::SyncFailed(format!("Account init error: {}", e))).await;
+        return;
+    }
+
+    if let Err(e) = wallet.sync().await {
+        let _ = tx.send(TaskMessage::SyncFailed(e.to_string())).await;
+        return;
+    }
+
+    let block_height = wallet.get_block_height().await.unwrap_or(0);
+    let balance = wallet.get_balance().unwrap_or(0);
+
+    let _ = tx.send(TaskMessage::SyncComplete { block_height, balance }).await;
+}
+
+/// Background task for verify operation
+async fn run_verify_task(
+    tx: mpsc::Sender<TaskMessage>,
+    config: ZcashConfig,
+    data: VerifyTaskData,
+) {
+    let _ = tx.send(TaskMessage::Phase(OperationPhase::Syncing)).await;
+    let _ = tx.send(TaskMessage::Status("Verifying against blockchain...".to_string())).await;
+
+    let mut wallet = match ZotsWallet::new(config).await {
+        Ok(w) => w,
+        Err(e) => {
+            let _ = tx.send(TaskMessage::VerifyFailed(format!("Wallet error: {}", e))).await;
+            return;
+        }
+    };
+
+    if let Err(e) = wallet.init_account().await {
+        let _ = tx.send(TaskMessage::VerifyFailed(format!("Account init error: {}", e))).await;
+        return;
+    }
+
+    let result = wallet
+        .verify_timestamp_tx(&data.txid_bytes, &data.proof_hash_bytes, Some(data.block_height))
+        .await;
+
+    match result {
+        Ok(vr) => {
+            let _ = tx.send(TaskMessage::VerifyComplete(VerifyResult {
+                hash: data.proof_hash,
+                valid: vr.valid,
+                network: data.network,
+                block_height: data.block_height,
+                timestamp: data.timestamp,
+                txid: data.txid,
+                explorer_link: data.explorer_link,
+                error: vr.error,
+                file_hash_matches: data.file_hash_matches,
+            })).await;
+        }
+        Err(e) => {
+            let _ = tx.send(TaskMessage::VerifyComplete(VerifyResult {
+                hash: data.proof_hash,
+                valid: false,
+                network: data.network,
+                block_height: data.block_height,
+                timestamp: data.timestamp,
+                txid: data.txid,
+                explorer_link: data.explorer_link,
+                error: Some(format!("Verification error: {}", e)),
+                file_hash_matches: data.file_hash_matches,
+            })).await;
+        }
     }
 }

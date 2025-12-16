@@ -64,10 +64,11 @@ async fn run_app(
                 },
                 AppState::Stamp | AppState::Verify | AppState::Wallet => match key.code {
                     KeyCode::Esc => {
+                        // Only allow ESC if not busy (or always allow to cancel)
                         app.state = AppState::Menu;
                         app.reset_state();
                     }
-                    _ => app.handle_input(key.code).await?,
+                    _ => app.handle_input(key.code)?,
                 },
             }
         }
