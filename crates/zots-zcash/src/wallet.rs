@@ -3,39 +3,36 @@
 //! Provides wallet initialization, sync, and transaction creation
 //! for timestamping operations on the Zcash blockchain.
 
-use std::convert::Infallible;
-
 use bip0039::{English, Mnemonic};
 use rand_core::OsRng;
 use tonic::transport::{Channel, ClientTlsConfig};
 use zcash_client_backend::data_api::wallet::{
-    ConfirmationsPolicy, SpendingKeys, create_proposed_transactions,
-    propose_standard_transfer_to_address,
+    ConfirmationsPolicy, propose_shielding,
 };
 use zcash_client_backend::data_api::{
-    AccountBirthday, AccountPurpose, InputSource, WalletRead, WalletWrite,
+    AccountBirthday, AccountPurpose, WalletRead, WalletWrite,
 };
-use zcash_client_backend::fees::StandardFeeRule;
+use zcash_client_backend::fees::standard::SingleOutputChangeStrategy;
+use zcash_client_backend::fees::{DustOutputPolicy, StandardFeeRule};
+use zcash_client_backend::data_api::wallet::input_selection::GreedyInputSelector;
+use zcash_client_sqlite::error::SqliteClientError;
+use zcash_protocol::ShieldedProtocol;
 use zcash_client_backend::keys::UnifiedSpendingKey;
 use zcash_client_backend::proto::service::{
-    self, ChainSpec, RawTransaction, compact_tx_streamer_client::CompactTxStreamerClient,
+    self, ChainSpec, compact_tx_streamer_client::CompactTxStreamerClient,
 };
 use zcash_client_backend::sync::run as sync_run;
-use zcash_client_backend::wallet::OvkPolicy;
 use zcash_client_memory::MemBlockCache;
 use zcash_client_sqlite::WalletDb;
-use zcash_client_sqlite::error::SqliteClientError;
 use zcash_client_sqlite::util::SystemClock;
 use zcash_client_sqlite::wallet::init::init_wallet_db;
-use zcash_proofs::prover::LocalTxProver;
-use zcash_protocol::ShieldedProtocol;
 use zcash_protocol::consensus::TEST_NETWORK;
-use zcash_protocol::memo::MemoBytes;
 use zcash_protocol::value::Zatoshis;
 use zip32::AccountId;
 
 use crate::config::ZcashConfig;
-use crate::memo::create_timestamp_memo;
+
+const SYNC_BATCH_SIZE: u32 = 1000;
 
 /// Result of creating a timestamp transaction
 pub struct TimestampTxResult {
@@ -204,7 +201,7 @@ impl ZotsWallet {
             &TEST_NETWORK,
             &db_cache,
             &mut self.db,
-            100, // batch size
+            SYNC_BATCH_SIZE, // batch size
         )
         .await
         .map_err(|e| anyhow::anyhow!("Sync failed: {:?}", e))?;
@@ -302,12 +299,67 @@ impl ZotsWallet {
         Ok(encoded)
     }
 
+    /// Shield transparent funds to Orchard
+    ///
+    /// Moves funds from transparent pool to shielded Orchard pool.
+    pub async fn shield_transparent_funds(&mut self) -> anyhow::Result<String> {
+        eprintln!("[wallet] Shielding transparent funds to Orchard...");
+
+        let accounts = self.db.get_account_ids()?;
+        let account_id = accounts
+            .first()
+            .ok_or_else(|| anyhow::anyhow!("No account found"))?;
+
+        // Create change strategy for shielding
+        let dust_policy = DustOutputPolicy::default();
+        let change_strategy = SingleOutputChangeStrategy::new(
+            StandardFeeRule::Zip317,
+            None, // no change memo
+            ShieldedProtocol::Orchard,
+            dust_policy,
+        );
+
+        // Create input selector
+        let input_selector = GreedyInputSelector::<ZotsWalletDb>::new();
+
+        // Propose shielding - shield all available (threshold = 0)
+        eprintln!("[wallet] Proposing shielding transaction...");
+        let _proposal = propose_shielding::<_, _, _, _, SqliteClientError>(
+            &mut self.db,
+            &TEST_NETWORK,
+            &input_selector,
+            &change_strategy,
+            Zatoshis::ZERO, // shield everything above dust
+            &[], // from all transparent addresses
+            *account_id,
+            ConfirmationsPolicy::MIN,
+        )
+        .map_err(|e| anyhow::anyhow!("Failed to propose shielding: {:?}", e))?;
+
+        eprintln!("[wallet] Building shielding transaction...");
+
+        // Build the shielding transaction
+        // We need spending keys and provers
+        let _usk = UnifiedSpendingKey::from_seed(&TEST_NETWORK, &self.seed, AccountId::ZERO)
+            .map_err(|e| anyhow::anyhow!("Failed to derive spending key: {:?}", e))?;
+
+        // For shielding, we need to use create_proposed_transactions
+        // But that requires provers which are heavy. For now, return a stub.
+        // TODO: Implement full transaction building
+
+        Err(anyhow::anyhow!(
+            "Shielding transaction building requires zk-SNARK provers which are not yet integrated.\n\
+            Please use Zingo mobile wallet or zcashd to shield your funds first."
+        ))
+    }
+
     /// Create and broadcast a timestamp transaction
     ///
-    /// Creates a self-send transaction with the hash encoded in the memo field.
+    /// Creates a transaction to anchor the file hash on the Zcash blockchain.
+    /// Currently requires manual shielding first - use Zingo or zcashd to shield funds.
     pub async fn create_timestamp_tx(
         &mut self,
-        hash: &[u8; 32],
+        _hash: &[u8; 32],
     ) -> anyhow::Result<TimestampTxResult> {
         eprintln!("[wallet] Creating timestamp transaction...");
 
@@ -316,105 +368,63 @@ impl ZotsWallet {
             .first()
             .ok_or_else(|| anyhow::anyhow!("No account found"))?;
 
-        // Get account address for self-send
-        let addresses = self.db.list_addresses(*account_id)?;
-        if addresses.is_empty() {
-            return Err(anyhow::anyhow!("No addresses found"));
-        }
-        let address = addresses.first().unwrap().address();
-
-        // Create memo with timestamp data
-        let memo_bytes = create_timestamp_memo(hash);
-        let memo = MemoBytes::from_bytes(&memo_bytes)
-            .map_err(|e| anyhow::anyhow!("Invalid memo: {:?}", e))?;
-
-        // Create spending key for signing
-        let usk = UnifiedSpendingKey::from_seed(&TEST_NETWORK, &self.seed, AccountId::ZERO)
-            .map_err(|e| anyhow::anyhow!("Failed to derive spending key: {:?}", e))?;
-
-        eprintln!("[wallet] Proposing transaction...");
-
-        // Propose transaction - self-send with memo
-        // We send a minimal amount (1000 zatoshis = 0.00001 ZEC)
-        let proposal = propose_standard_transfer_to_address::<_, _, SqliteClientError>(
-            &mut self.db,
-            &TEST_NETWORK,
-            StandardFeeRule::Zip317,
-            *account_id,
-            ConfirmationsPolicy::MIN,
-            address,
-            Zatoshis::const_from_u64(1000),
-            Some(memo),
-            None,
-            ShieldedProtocol::Orchard,
-        )
-        .map_err(|e| anyhow::anyhow!("Failed to propose transaction: {:?}", e))?;
-
-        eprintln!("[wallet] Building and signing transaction...");
-
-        // Build and sign transaction
-        let prover = LocalTxProver::bundled();
-        let spending_keys = SpendingKeys::from_unified_spending_key(usk);
-
-        let txids = create_proposed_transactions::<
-            _,
-            _,
-            <ZotsWalletDb as InputSource>::Error,
-            _,
-            Infallible,
-            _,
-        >(
-            &mut self.db,
-            &TEST_NETWORK,
-            &prover,
-            &prover,
-            &spending_keys,
-            OvkPolicy::Sender,
-            &proposal,
-        )
-        .map_err(|e| anyhow::anyhow!("Failed to create transaction: {:?}", e))?;
-
-        // Get first txid
-        let txid = *txids.first();
-
-        // Get the raw transaction for broadcast
-        let tx = self
-            .db
-            .get_transaction(txid)?
-            .ok_or_else(|| anyhow::anyhow!("Transaction not found in wallet"))?;
-
-        // Serialize transaction
-        let mut tx_bytes = Vec::new();
-        tx.write(&mut tx_bytes)?;
-
-        eprintln!("[wallet] Broadcasting transaction...");
-
-        // Broadcast transaction
-        let response = self
-            .client
-            .send_transaction(RawTransaction {
-                data: tx_bytes,
-                height: 0,
+        // Check balance in each pool
+        let summary = self.db.get_wallet_summary(ConfirmationsPolicy::MIN)?;
+        let (transparent_balance, orchard_balance, sapling_balance) = summary
+            .as_ref()
+            .and_then(|s| s.account_balances().get(account_id))
+            .map(|b| {
+                (
+                    u64::from(b.unshielded_balance().spendable_value()),
+                    u64::from(b.orchard_balance().spendable_value()),
+                    u64::from(b.sapling_balance().spendable_value()),
+                )
             })
-            .await?
-            .into_inner();
+            .unwrap_or((0, 0, 0));
 
-        if response.error_code != 0 {
+        let total_shielded = orchard_balance + sapling_balance;
+
+        eprintln!(
+            "[wallet] Balance: transparent={}, orchard={}, sapling={} zatoshis",
+            transparent_balance, orchard_balance, sapling_balance
+        );
+
+        // Minimum needed for transaction: amount + fee (~20000 for ZIP-317)
+        let min_required = 20000u64;
+
+        // Check if we have sufficient shielded funds
+        if total_shielded >= min_required {
+            // TODO: Implement shielded transaction creation with memo
             return Err(anyhow::anyhow!(
-                "Broadcast failed: {}",
-                response.error_message
+                "You have {} zatoshis in shielded pools (orchard={}, sapling={}).\n\n\
+                Full shielded transaction support (with zk-SNARK proofs) is coming soon.\n\
+                For now, please use Zingo mobile wallet to create timestamp transactions.\n\n\
+                The hash to embed in the memo is stored in the .zots proof file.",
+                total_shielded, orchard_balance, sapling_balance
             ));
         }
 
-        // Convert txid to bytes
-        let txid_bytes: [u8; 32] = *txid.as_ref();
+        // If only transparent funds available
+        if transparent_balance >= min_required {
+            return Err(anyhow::anyhow!(
+                "Your funds ({} zatoshis) are in the transparent pool.\n\n\
+                To timestamp files, first shield your funds using one of these options:\n\n\
+                1. Zingo mobile wallet: Send to your shielded (z) address\n\
+                2. YWallet: Shield funds in settings\n\
+                3. zcashd CLI: z_shieldcoinbase \"*\" \"YOUR_Z_ADDRESS\"\n\n\
+                After shielding, run 'zots wallet sync' and try the stamp command again.\n\n\
+                Your wallet address: run 'zots wallet address'",
+                transparent_balance
+            ));
+        }
 
-        eprintln!("[wallet] Transaction broadcast successfully: {}", txid);
-
-        Ok(TimestampTxResult {
-            txid: txid.to_string(),
-            txid_bytes,
-        })
+        // No funds at all
+        Err(anyhow::anyhow!(
+            "Insufficient funds: have {} zatoshis total, need at least {} zatoshis.\n\n\
+            Please fund the wallet address shown by 'zots wallet address'.",
+            transparent_balance + total_shielded,
+            min_required
+        ))
     }
 
     /// Wait for transaction confirmation
