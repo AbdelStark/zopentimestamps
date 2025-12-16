@@ -97,13 +97,13 @@ pub async fn run(
     pb.finish_with_message("Transaction confirmed");
 
     // Add attestation
-    proof.add_attestation(ZcashAttestation {
-        network: config.network,
-        txid: tx_result.txid_bytes,
-        block_height: confirmation.block_height,
-        block_time: confirmation.block_time,
-        memo_offset: 0,
-    });
+    proof.add_attestation(ZcashAttestation::new(
+        config.network,
+        tx_result.txid_bytes,
+        confirmation.block_height,
+        confirmation.block_time,
+        0,
+    ));
 
     // Save proof
     proof.save(&output_path)?;

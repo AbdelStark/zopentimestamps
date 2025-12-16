@@ -2,7 +2,7 @@
 
 use crate::output::*;
 use std::path::PathBuf;
-use zots_core::{TimestampProof, hash_to_hex};
+use zots_core::TimestampProof;
 
 pub fn run(proof_path: PathBuf) -> anyhow::Result<()> {
     print_header("Proof Information");
@@ -11,7 +11,7 @@ pub fn run(proof_path: PathBuf) -> anyhow::Result<()> {
 
     print_info("File", &proof_path.display().to_string());
     print_info("Version", &proof.version.to_string());
-    print_hash(&hash_to_hex(&proof.hash));
+    print_hash(&proof.hash);
     print_info("Attestations", &proof.attestations.len().to_string());
     print_info(
         "Status",

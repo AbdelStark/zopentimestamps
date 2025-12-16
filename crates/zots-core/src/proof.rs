@@ -1,47 +1,27 @@
 //! .zots proof format
 //!
-//! Binary format for timestamp proofs with Zcash attestations.
+//! Human-readable JSON format for timestamp proofs with Zcash attestations.
 
 use crate::{Error, Hash256, Result};
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 
-/// Magic header: \x00zOTS\x00\x00\x01
+/// Magic header for ZOTS timestamp memo: \x00zOTS\x00\x00\x01
+/// Used in blockchain memo fields to identify timestamp data
 pub const ZOTS_MAGIC: [u8; 8] = [0x00, 0x7A, 0x4F, 0x54, 0x53, 0x00, 0x00, 0x01];
 
 /// Current proof format version
 pub const PROOF_VERSION: u8 = 1;
 
-/// Hash type identifier for SHA-256
-pub const HASH_TYPE_SHA256: u8 = 0x00;
-
-/// Attestation type identifier for Zcash transactions
-pub const ATTESTATION_TYPE_ZCASH: u8 = 0x01;
-
 /// Network type (mainnet or testnet)
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum Network {
     Mainnet,
     Testnet,
 }
 
 impl Network {
-    /// Convert network to byte representation
-    pub fn to_byte(&self) -> u8 {
-        match self {
-            Network::Mainnet => 0x00,
-            Network::Testnet => 0x01,
-        }
-    }
-
-    /// Parse network from byte
-    pub fn from_byte(b: u8) -> Result<Self> {
-        match b {
-            0x00 => Ok(Network::Mainnet),
-            0x01 => Ok(Network::Testnet),
-            _ => Err(Error::InvalidProof(format!("Unknown network byte: {}", b))),
-        }
-    }
-
     /// Get the block explorer URL for this network
     pub fn explorer_url(&self) -> &'static str {
         match self {
@@ -66,12 +46,12 @@ impl std::fmt::Display for Network {
 }
 
 /// A Zcash blockchain attestation
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ZcashAttestation {
     /// Network where the transaction was broadcast
     pub network: Network,
-    /// Transaction ID (32 bytes, internal byte order)
-    pub txid: [u8; 32],
+    /// Transaction ID (hex string, display byte order)
+    pub txid: String,
     /// Block height where transaction was confirmed
     pub block_height: u32,
     /// Block timestamp (Unix timestamp)
@@ -81,17 +61,50 @@ pub struct ZcashAttestation {
 }
 
 impl ZcashAttestation {
-    /// Get the transaction ID as a hex string (display byte order - reversed)
-    pub fn txid_hex(&self) -> String {
-        // Zcash txids are displayed in reversed byte order
-        let mut reversed = self.txid;
+    /// Create a new attestation from raw txid bytes (internal byte order)
+    pub fn new(
+        network: Network,
+        txid_bytes: [u8; 32],
+        block_height: u32,
+        block_time: u32,
+        memo_offset: u16,
+    ) -> Self {
+        // Convert to display byte order (reversed) and hex string
+        let mut reversed = txid_bytes;
         reversed.reverse();
-        hex::encode(reversed)
+        let txid = hex::encode(reversed);
+
+        Self {
+            network,
+            txid,
+            block_height,
+            block_time,
+            memo_offset,
+        }
+    }
+
+    /// Get the transaction ID as a hex string (display byte order)
+    pub fn txid_hex(&self) -> &str {
+        &self.txid
+    }
+
+    /// Get the txid as raw bytes (internal byte order)
+    pub fn txid_bytes(&self) -> Result<[u8; 32]> {
+        let bytes = hex::decode(&self.txid)
+            .map_err(|e| Error::InvalidProof(format!("Invalid txid hex: {}", e)))?;
+        if bytes.len() != 32 {
+            return Err(Error::InvalidProof("TXID must be 32 bytes".into()));
+        }
+        let mut arr = [0u8; 32];
+        arr.copy_from_slice(&bytes);
+        // Reverse back to internal byte order
+        arr.reverse();
+        Ok(arr)
     }
 
     /// Get the full explorer link for this transaction
     pub fn explorer_link(&self) -> String {
-        format!("{}/tx/{}", self.network.explorer_url(), self.txid_hex())
+        format!("{}/tx/{}", self.network.explorer_url(), self.txid)
     }
 
     /// Get the block timestamp as a DateTime
@@ -101,12 +114,12 @@ impl ZcashAttestation {
 }
 
 /// A timestamp proof containing hash and attestations
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TimestampProof {
     /// Proof format version
     pub version: u8,
-    /// SHA-256 hash of the timestamped data
-    pub hash: Hash256,
+    /// SHA-256 hash of the timestamped data (hex string)
+    pub hash: String,
     /// List of blockchain attestations
     pub attestations: Vec<ZcashAttestation>,
 }
@@ -116,9 +129,21 @@ impl TimestampProof {
     pub fn new(hash: Hash256) -> Self {
         Self {
             version: PROOF_VERSION,
-            hash,
+            hash: hex::encode(hash),
             attestations: Vec::new(),
         }
+    }
+
+    /// Get the hash as raw bytes
+    pub fn hash_bytes(&self) -> Result<Hash256> {
+        let bytes = hex::decode(&self.hash)
+            .map_err(|e| Error::InvalidProof(format!("Invalid hash hex: {}", e)))?;
+        if bytes.len() != 32 {
+            return Err(Error::InvalidProof("Hash must be 32 bytes".into()));
+        }
+        let mut arr = [0u8; 32];
+        arr.copy_from_slice(&bytes);
+        Ok(arr)
     }
 
     /// Add an attestation to the proof
@@ -131,176 +156,45 @@ impl TimestampProof {
         !self.attestations.is_empty()
     }
 
-    /// Serialize the proof to binary .zots format
-    pub fn serialize(&self) -> Vec<u8> {
-        let mut buf = Vec::new();
-
-        // Magic header (8 bytes)
-        buf.extend_from_slice(&ZOTS_MAGIC);
-
-        // Version (1 byte)
-        buf.push(self.version);
-
-        // Hash type (1 byte)
-        buf.push(HASH_TYPE_SHA256);
-
-        // Hash (32 bytes)
-        buf.extend_from_slice(&self.hash);
-
-        // Number of attestations (1 byte)
-        buf.push(self.attestations.len() as u8);
-
-        // Attestations
-        for att in &self.attestations {
-            // Type (1 byte)
-            buf.push(ATTESTATION_TYPE_ZCASH);
-            // Network (1 byte)
-            buf.push(att.network.to_byte());
-            // TXID (32 bytes)
-            buf.extend_from_slice(&att.txid);
-            // Block height (4 bytes, little-endian)
-            buf.extend_from_slice(&att.block_height.to_le_bytes());
-            // Block time (4 bytes, little-endian)
-            buf.extend_from_slice(&att.block_time.to_le_bytes());
-            // Memo offset (2 bytes, little-endian)
-            buf.extend_from_slice(&att.memo_offset.to_le_bytes());
-        }
-
-        buf
+    /// Serialize the proof to JSON
+    pub fn serialize(&self) -> Result<String> {
+        serde_json::to_string_pretty(self)
+            .map_err(|e| Error::InvalidProof(format!("JSON serialization failed: {}", e)))
     }
 
-    /// Deserialize a proof from binary .zots format
-    pub fn deserialize(data: &[u8]) -> Result<Self> {
-        if data.len() < 8 {
-            return Err(Error::InvalidProof("File too small".into()));
-        }
+    /// Deserialize a proof from JSON
+    pub fn deserialize(data: &str) -> Result<Self> {
+        let proof: Self = serde_json::from_str(data)
+            .map_err(|e| Error::InvalidProof(format!("JSON parse error: {}", e)))?;
 
-        // Check magic header
-        if data[0..8] != ZOTS_MAGIC {
-            return Err(Error::InvalidProof("Invalid magic header".into()));
-        }
-
-        let mut offset = 8;
-
-        // Version
-        if data.len() < offset + 1 {
-            return Err(Error::InvalidProof("Truncated at version".into()));
-        }
-        let version = data[offset];
-        if version != PROOF_VERSION {
+        if proof.version != PROOF_VERSION {
             return Err(Error::InvalidProof(format!(
                 "Unsupported version: {}",
-                version
+                proof.version
             )));
         }
-        offset += 1;
 
-        // Hash type
-        if data.len() < offset + 1 {
-            return Err(Error::InvalidProof("Truncated at hash type".into()));
-        }
-        let hash_type = data[offset];
-        if hash_type != HASH_TYPE_SHA256 {
-            return Err(Error::InvalidProof(format!(
-                "Unsupported hash type: {}",
-                hash_type
-            )));
-        }
-        offset += 1;
+        // Validate hash is valid hex
+        let _ = proof.hash_bytes()?;
 
-        // Hash (32 bytes)
-        if data.len() < offset + 32 {
-            return Err(Error::InvalidProof("Truncated at hash".into()));
-        }
-        let mut hash = [0u8; 32];
-        hash.copy_from_slice(&data[offset..offset + 32]);
-        offset += 32;
-
-        // Number of attestations
-        if data.len() < offset + 1 {
-            return Err(Error::InvalidProof("Truncated at attestation count".into()));
-        }
-        let num_attestations = data[offset] as usize;
-        offset += 1;
-
-        // Parse attestations
-        let mut attestations = Vec::with_capacity(num_attestations);
-        for i in 0..num_attestations {
-            // Each attestation: type(1) + network(1) + txid(32) + height(4) + time(4) + offset(2) = 44 bytes
-            if data.len() < offset + 44 {
-                return Err(Error::InvalidProof(format!(
-                    "Truncated at attestation {}",
-                    i
-                )));
-            }
-
-            // Type
-            let att_type = data[offset];
-            if att_type != ATTESTATION_TYPE_ZCASH {
-                return Err(Error::InvalidProof(format!(
-                    "Unknown attestation type: {}",
-                    att_type
-                )));
-            }
-            offset += 1;
-
-            // Network
-            let network = Network::from_byte(data[offset])?;
-            offset += 1;
-
-            // TXID
-            let mut txid = [0u8; 32];
-            txid.copy_from_slice(&data[offset..offset + 32]);
-            offset += 32;
-
-            // Block height
-            let block_height = u32::from_le_bytes([
-                data[offset],
-                data[offset + 1],
-                data[offset + 2],
-                data[offset + 3],
-            ]);
-            offset += 4;
-
-            // Block time
-            let block_time = u32::from_le_bytes([
-                data[offset],
-                data[offset + 1],
-                data[offset + 2],
-                data[offset + 3],
-            ]);
-            offset += 4;
-
-            // Memo offset
-            let memo_offset = u16::from_le_bytes([data[offset], data[offset + 1]]);
-            offset += 2;
-
-            attestations.push(ZcashAttestation {
-                network,
-                txid,
-                block_height,
-                block_time,
-                memo_offset,
-            });
+        // Validate all txids are valid hex
+        for att in &proof.attestations {
+            let _ = att.txid_bytes()?;
         }
 
-        Ok(Self {
-            version,
-            hash,
-            attestations,
-        })
+        Ok(proof)
     }
 
     /// Save the proof to a file
     pub fn save(&self, path: impl AsRef<std::path::Path>) -> Result<()> {
-        let data = self.serialize();
-        std::fs::write(path, data)?;
+        let json = self.serialize()?;
+        std::fs::write(path, json)?;
         Ok(())
     }
 
     /// Load a proof from a file
     pub fn load(path: impl AsRef<std::path::Path>) -> Result<Self> {
-        let data = std::fs::read(path)?;
+        let data = std::fs::read_to_string(path)?;
         Self::deserialize(&data)
     }
 }
@@ -310,35 +204,38 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_network_roundtrip() {
+    fn test_network_serialization() {
         assert_eq!(
-            Network::from_byte(Network::Mainnet.to_byte()).unwrap(),
-            Network::Mainnet
+            serde_json::to_string(&Network::Mainnet).unwrap(),
+            "\"mainnet\""
         );
         assert_eq!(
-            Network::from_byte(Network::Testnet.to_byte()).unwrap(),
-            Network::Testnet
+            serde_json::to_string(&Network::Testnet).unwrap(),
+            "\"testnet\""
         );
     }
 
     #[test]
-    fn test_network_invalid() {
-        assert!(Network::from_byte(0xFF).is_err());
+    fn test_network_deserialization() {
+        let mainnet: Network = serde_json::from_str("\"mainnet\"").unwrap();
+        let testnet: Network = serde_json::from_str("\"testnet\"").unwrap();
+        assert_eq!(mainnet, Network::Mainnet);
+        assert_eq!(testnet, Network::Testnet);
     }
 
     #[test]
-    fn test_attestation_txid_hex() {
-        let att = ZcashAttestation {
-            network: Network::Testnet,
-            txid: [0xAB; 32],
-            block_height: 100,
-            block_time: 1700000000,
-            memo_offset: 0,
-        };
+    fn test_attestation_txid() {
+        let txid_bytes = [0xAB; 32];
+        let att = ZcashAttestation::new(Network::Testnet, txid_bytes, 100, 1700000000, 0);
+
+        // Display order is reversed
         let hex = att.txid_hex();
-        // All 0xAB bytes reversed is still all 0xAB
         assert_eq!(hex.len(), 64);
         assert!(hex.chars().all(|c| c == 'a' || c == 'b'));
+
+        // Round-trip back to bytes
+        let recovered = att.txid_bytes().unwrap();
+        assert_eq!(recovered, txid_bytes);
     }
 
     #[test]
@@ -346,9 +243,16 @@ mod tests {
         let hash = [0x42u8; 32];
         let proof = TimestampProof::new(hash);
         assert_eq!(proof.version, PROOF_VERSION);
-        assert_eq!(proof.hash, hash);
+        assert_eq!(proof.hash, hex::encode(hash));
         assert!(proof.attestations.is_empty());
         assert!(!proof.is_confirmed());
+    }
+
+    #[test]
+    fn test_proof_hash_bytes() {
+        let hash = [0x42u8; 32];
+        let proof = TimestampProof::new(hash);
+        assert_eq!(proof.hash_bytes().unwrap(), hash);
     }
 
     #[test]
@@ -356,21 +260,21 @@ mod tests {
         let hash = [0xABu8; 32];
         let mut proof = TimestampProof::new(hash);
 
-        proof.add_attestation(ZcashAttestation {
-            network: Network::Testnet,
-            txid: [0xCDu8; 32],
-            block_height: 3721456,
-            block_time: 1734567890,
-            memo_offset: 8,
-        });
+        proof.add_attestation(ZcashAttestation::new(
+            Network::Testnet,
+            [0xCDu8; 32],
+            3721456,
+            1734567890,
+            8,
+        ));
 
         assert!(proof.is_confirmed());
 
-        let serialized = proof.serialize();
-        let deserialized = TimestampProof::deserialize(&serialized).unwrap();
+        let json = proof.serialize().unwrap();
+        let deserialized = TimestampProof::deserialize(&json).unwrap();
 
         assert_eq!(deserialized.version, proof.version);
-        assert_eq!(deserialized.hash, hash);
+        assert_eq!(deserialized.hash, proof.hash);
         assert_eq!(deserialized.attestations.len(), 1);
         assert_eq!(deserialized.attestations[0].network, Network::Testnet);
         assert_eq!(deserialized.attestations[0].block_height, 3721456);
@@ -379,28 +283,55 @@ mod tests {
     }
 
     #[test]
+    fn test_proof_json_is_readable() {
+        let hash = [
+            0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0,
+            0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0,
+            0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0,
+            0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0,
+        ];
+        let mut proof = TimestampProof::new(hash);
+        proof.add_attestation(ZcashAttestation::new(
+            Network::Testnet,
+            [0x11; 32],
+            12345,
+            1700000000,
+            0,
+        ));
+
+        let json = proof.serialize().unwrap();
+
+        // Verify it's human-readable JSON
+        assert!(json.contains("\"version\": 1"));
+        assert!(json.contains("\"hash\":"));
+        assert!(json.contains("\"attestations\":"));
+        assert!(json.contains("\"network\": \"testnet\""));
+        assert!(json.contains("\"block_height\": 12345"));
+    }
+
+    #[test]
     fn test_proof_multiple_attestations() {
         let hash = [0x00u8; 32];
         let mut proof = TimestampProof::new(hash);
 
-        proof.add_attestation(ZcashAttestation {
-            network: Network::Testnet,
-            txid: [0x01u8; 32],
-            block_height: 100,
-            block_time: 1000,
-            memo_offset: 0,
-        });
+        proof.add_attestation(ZcashAttestation::new(
+            Network::Testnet,
+            [0x01u8; 32],
+            100,
+            1000,
+            0,
+        ));
 
-        proof.add_attestation(ZcashAttestation {
-            network: Network::Mainnet,
-            txid: [0x02u8; 32],
-            block_height: 200,
-            block_time: 2000,
-            memo_offset: 0,
-        });
+        proof.add_attestation(ZcashAttestation::new(
+            Network::Mainnet,
+            [0x02u8; 32],
+            200,
+            2000,
+            0,
+        ));
 
-        let serialized = proof.serialize();
-        let deserialized = TimestampProof::deserialize(&serialized).unwrap();
+        let json = proof.serialize().unwrap();
+        let deserialized = TimestampProof::deserialize(&json).unwrap();
 
         assert_eq!(deserialized.attestations.len(), 2);
         assert_eq!(deserialized.attestations[0].network, Network::Testnet);
@@ -408,34 +339,33 @@ mod tests {
     }
 
     #[test]
-    fn test_proof_invalid_magic() {
-        let data = vec![0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
-        assert!(TimestampProof::deserialize(&data).is_err());
+    fn test_proof_invalid_json() {
+        assert!(TimestampProof::deserialize("not json").is_err());
     }
 
     #[test]
-    fn test_proof_too_small() {
-        let data = vec![0x00, 0x7A, 0x4F];
-        assert!(TimestampProof::deserialize(&data).is_err());
+    fn test_proof_invalid_hash() {
+        let json = r#"{"version": 1, "hash": "not_hex", "attestations": []}"#;
+        assert!(TimestampProof::deserialize(json).is_err());
     }
 
     #[test]
     fn test_proof_file_roundtrip() {
         let hash = [0x55u8; 32];
         let mut proof = TimestampProof::new(hash);
-        proof.add_attestation(ZcashAttestation {
-            network: Network::Testnet,
-            txid: [0x66u8; 32],
-            block_height: 12345,
-            block_time: 1700000000,
-            memo_offset: 0,
-        });
+        proof.add_attestation(ZcashAttestation::new(
+            Network::Testnet,
+            [0x66u8; 32],
+            12345,
+            1700000000,
+            0,
+        ));
 
         let temp_path = std::env::temp_dir().join("test_proof.zots");
         proof.save(&temp_path).unwrap();
 
         let loaded = TimestampProof::load(&temp_path).unwrap();
-        assert_eq!(loaded.hash, hash);
+        assert_eq!(loaded.hash, proof.hash);
         assert_eq!(loaded.attestations.len(), 1);
 
         // Cleanup

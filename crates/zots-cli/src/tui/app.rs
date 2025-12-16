@@ -3,7 +3,7 @@
 use anyhow::Result;
 use crossterm::event::KeyCode;
 use std::path::PathBuf;
-use zots_core::{TimestampProof, hash_file, hash_from_hex, hash_to_hex};
+use zots_core::{TimestampProof, hash_file, hash_from_hex};
 use zots_zcash::{ZcashConfig, ZotsWallet};
 
 /// Current screen/state of the TUI
@@ -255,13 +255,13 @@ impl App {
         if proof.attestations.is_empty() {
             self.result_message = format!(
                 "Hash: {}\nStatus: PENDING (no attestations)",
-                hash_to_hex(&proof.hash)
+                &proof.hash
             );
         } else {
             let att = &proof.attestations[0];
             self.result_message = format!(
                 "VALID TIMESTAMP\nHash: {}\nBlock: {}\nTime: {}\nTXID: {}",
-                &hash_to_hex(&proof.hash)[..16],
+                &proof.hash[..16],
                 att.block_height,
                 att.timestamp().to_rfc3339(),
                 &att.txid_hex()[..16]

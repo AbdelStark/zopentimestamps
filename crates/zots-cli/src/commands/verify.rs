@@ -11,18 +11,21 @@ pub async fn run(proof_path: PathBuf, file: Option<PathBuf>) -> anyhow::Result<(
     // Load proof
     let proof = TimestampProof::load(&proof_path)?;
     print_info("Proof", &proof_path.display().to_string());
-    print_hash(&hash_to_hex(&proof.hash));
+    print_hash(&proof.hash);
+
+    // Get hash bytes for comparison
+    let proof_hash_bytes = proof.hash_bytes()?;
 
     // Verify against original file if provided
     if let Some(file_path) = file {
         print_status("Verifying hash against original file...");
         let file_hash = hash_file(&file_path)?;
 
-        if file_hash == proof.hash {
+        if file_hash == proof_hash_bytes {
             print_success("Hash matches original file");
         } else {
             print_error("Hash does NOT match original file!");
-            print_info("Expected", &hash_to_hex(&proof.hash));
+            print_info("Expected", &proof.hash);
             print_info("Got", &hash_to_hex(&file_hash));
             return Ok(());
         }
@@ -44,8 +47,11 @@ pub async fn run(proof_path: PathBuf, file: Option<PathBuf>) -> anyhow::Result<(
     let mut wallet = ZotsWallet::new(config).await?;
     wallet.init_account().await?;
 
+    // Convert txid from hex string to bytes
+    let txid_bytes = att.txid_bytes()?;
+
     let result = wallet
-        .verify_timestamp_tx(&att.txid, &proof.hash, Some(att.block_height))
+        .verify_timestamp_tx(&txid_bytes, &proof_hash_bytes, Some(att.block_height))
         .await?;
 
     if result.valid {
@@ -54,7 +60,7 @@ pub async fn run(proof_path: PathBuf, file: Option<PathBuf>) -> anyhow::Result<(
         print_info("Network", &att.network.to_string());
         print_info("Block", &att.block_height.to_string());
         print_info("Time", &att.timestamp().to_rfc3339());
-        print_info("TXID", &att.txid_hex());
+        print_info("TXID", att.txid_hex());
         print_link("Explorer", &att.explorer_link());
     } else {
         println!();
@@ -62,7 +68,7 @@ pub async fn run(proof_path: PathBuf, file: Option<PathBuf>) -> anyhow::Result<(
         if let Some(error) = result.error {
             print_info("Reason", &error);
         }
-        print_info("TXID", &att.txid_hex());
+        print_info("TXID", att.txid_hex());
     }
 
     Ok(())

@@ -10,3 +10,5 @@ sha2.workspace = true
 hex.workspace = true
 thiserror.workspace = true
 chrono.workspace = true
+serde.workspace = true
+serde_json.workspace = true

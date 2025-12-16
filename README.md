@@ -139,11 +139,33 @@ Controls:
 
 ## Proof Format (.zots)
 
-Timestamp proofs are stored in a binary format with:
-- Magic header: `ZOTS`
-- Version: 1
-- SHA-256 hash (32 bytes)
-- Attestations (network, txid, block height, block time)
+Timestamp proofs are stored in human-readable JSON format:
+
+```json
+{
+  "version": 1,
+  "hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "attestations": [
+    {
+      "network": "testnet",
+      "txid": "abc123...",
+      "block_height": 3739654,
+      "block_time": 1734293400,
+      "memo_offset": 0
+    }
+  ]
+}
+```
+
+Fields:
+- `version`: Proof format version (currently 1)
+- `hash`: SHA-256 hash of the timestamped data (hex string)
+- `attestations`: List of blockchain attestations confirming the timestamp
+  - `network`: "mainnet" or "testnet"
+  - `txid`: Transaction ID (hex string, display byte order)
+  - `block_height`: Block number where the transaction was confirmed
+  - `block_time`: Unix timestamp of the block
+  - `memo_offset`: Offset in memo field (usually 0)
 
 ## How It Works
 

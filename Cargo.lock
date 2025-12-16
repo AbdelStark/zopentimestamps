@@ -2466,6 +2466,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde_json"
+version = "1.0.145"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "402a6f66d8c709116cf22f558eab210f5a50187f702eb4d7e5ef38d9a7f1c79c"
+dependencies = [
+ "itoa",
+ "memchr",
+ "ryu",
+ "serde",
+ "serde_core",
+]
+
+[[package]]
 name = "sha1"
 version = "0.10.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3981,6 +3994,8 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "hex",
+ "serde",
+ "serde_json",
  "sha2 0.10.9",
  "thiserror 2.0.17",
 ]
