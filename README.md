@@ -12,6 +12,11 @@ Timestamp any file or hash on the Zcash blockchain to create cryptographic proof
 | --- | --- |
 | ![CLI verification screenshot](docs/misc/zots-demo-screenshot-verify-stamp-cli.png) | ![TUI verification screenshot](docs/misc/zots-demo-screenshot-verify-stamp-tui.png) |
 
+[Bitcoin Whitepaper PDF](https://bitcoin.org/bitcoin.pdf) timestamped on the Zcash testnet blockchain.
+
+| Compact proof encoding | Compact proof decoding |
+| --- | --- |
+| ![Compact proof encoding screenshot](docs/misc/zots-demo-screenshot-encode-cbor.png) | ![Compact proof decoding screenshot](docs/misc/zots-demo-screenshot-decode-cbor.png) |
 
 ## Table of Contents
 
