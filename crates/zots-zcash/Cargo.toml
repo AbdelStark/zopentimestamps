@@ -29,6 +29,7 @@ bip0039.workspace = true
 rand.workspace = true
 rand_core.workspace = true
 zip32.workspace = true
+sha2.workspace = true
 
 # Storage
 rusqlite.workspace = true
