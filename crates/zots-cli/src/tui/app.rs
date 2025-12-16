@@ -70,10 +70,14 @@ pub enum TaskMessage {
     VerifyComplete(VerifyResult),
     /// Verify operation failed
     VerifyFailed(String),
-    /// Wallet sync completed
+    /// Wallet sync completed (explicit user action)
     SyncComplete { block_height: u64, balance: u64 },
     /// Wallet sync failed
     SyncFailed(String),
+    /// Initial background sync completed (silent, just updates balance)
+    InitialSyncComplete { block_height: u64, balance: u64 },
+    /// Initial sync failed (silent)
+    InitialSyncFailed,
 }
 
 /// TUI application state
@@ -149,32 +153,28 @@ impl App {
         // Create channel for background task communication
         let (task_tx, task_rx) = mpsc::channel(32);
 
-        // Try to get initial block height (quick operation)
-        let block_height = if let Some(ref cfg) = config {
-            match ZotsWallet::new(cfg.clone()).await {
-                Ok(mut w) => w.get_block_height().await.unwrap_or(0),
-                Err(_) => 0,
-            }
+        let (status, task_running) = if config.is_some() {
+            // Spawn initial sync task to get balance
+            let tx = task_tx.clone();
+            let cfg = config.clone().unwrap();
+            tokio::spawn(async move {
+                run_initial_sync_task(tx, cfg).await;
+            });
+            ("Syncing wallet...".to_string(), true)
         } else {
-            0
-        };
-
-        let status = if config.is_some() {
-            "Ready - Press S to stamp, V to verify".to_string()
-        } else {
-            "No wallet configured (set ZOTS_SEED)".to_string()
+            ("No wallet configured (set ZOTS_SEED)".to_string(), false)
         };
 
         Ok(Self {
             state: AppState::Menu,
             config,
-            block_height,
+            block_height: 0,
             balance: 0,
             status_message: status,
             input_buffer: String::new(),
             result_message: String::new(),
             result_is_error: false,
-            operation_phase: OperationPhase::Input,
+            operation_phase: if task_running { OperationPhase::Syncing } else { OperationPhase::Input },
             spinner_frame: 0,
             verify_step: VerifyStep::FileOrHash,
             verify_file_input: String::new(),
@@ -183,7 +183,7 @@ impl App {
             verify_result: None,
             task_rx,
             task_tx,
-            task_running: false,
+            task_running,
         })
     }
 
@@ -243,6 +243,20 @@ impl App {
                     self.result_message = format!("Sync failed: {}", error);
                     self.result_is_error = true;
                     self.operation_phase = OperationPhase::Failed;
+                    self.task_running = false;
+                }
+                TaskMessage::InitialSyncComplete { block_height, balance } => {
+                    // Silent update - just set values and return to ready state
+                    self.block_height = block_height;
+                    self.balance = balance;
+                    self.status_message = "Ready".to_string();
+                    self.operation_phase = OperationPhase::Input;
+                    self.task_running = false;
+                }
+                TaskMessage::InitialSyncFailed => {
+                    // Silent failure - just return to ready state
+                    self.status_message = "Ready (sync failed)".to_string();
+                    self.operation_phase = OperationPhase::Input;
                     self.task_running = false;
                 }
             }
@@ -723,7 +737,7 @@ async fn run_stamp_task(
     })).await;
 }
 
-/// Background task for wallet sync
+/// Background task for wallet sync (explicit user action)
 async fn run_sync_task(tx: mpsc::Sender<TaskMessage>, config: ZcashConfig) {
     let _ = tx.send(TaskMessage::Phase(OperationPhase::Syncing)).await;
     let _ = tx.send(TaskMessage::Status("Syncing wallet...".to_string())).await;
@@ -750,6 +764,32 @@ async fn run_sync_task(tx: mpsc::Sender<TaskMessage>, config: ZcashConfig) {
     let balance = wallet.get_balance().unwrap_or(0);
 
     let _ = tx.send(TaskMessage::SyncComplete { block_height, balance }).await;
+}
+
+/// Background task for initial wallet sync (silent, at app startup)
+async fn run_initial_sync_task(tx: mpsc::Sender<TaskMessage>, config: ZcashConfig) {
+    let mut wallet = match ZotsWallet::new(config).await {
+        Ok(w) => w,
+        Err(_) => {
+            let _ = tx.send(TaskMessage::InitialSyncFailed).await;
+            return;
+        }
+    };
+
+    if wallet.init_account().await.is_err() {
+        let _ = tx.send(TaskMessage::InitialSyncFailed).await;
+        return;
+    }
+
+    if wallet.sync().await.is_err() {
+        let _ = tx.send(TaskMessage::InitialSyncFailed).await;
+        return;
+    }
+
+    let block_height = wallet.get_block_height().await.unwrap_or(0);
+    let balance = wallet.get_balance().unwrap_or(0);
+
+    let _ = tx.send(TaskMessage::InitialSyncComplete { block_height, balance }).await;
 }
 
 /// Background task for verify operation
