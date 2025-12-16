@@ -8,6 +8,11 @@ Timestamp any file or hash on the Zcash blockchain to create cryptographic proof
 > This is experimental software. **Do not use on mainnet with real funds.**
 > The code has not been audited. Use only on testnet for development and testing.
 
+| CLI verification view | Interactive TUI verification |
+| --- | --- |
+| ![CLI verification screenshot](docs/misc/zots-demo-screenshot-verify-stamp-cli.png) | ![TUI verification screenshot](docs/misc/zots-demo-screenshot-verify-stamp-tui.png) |
+
+
 ## Table of Contents
 
 - [Features](#features)
