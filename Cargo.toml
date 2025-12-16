@@ -70,3 +70,4 @@ indicatif = "0.17"
 
 # Misc
 dirs = "5.0"
+nonempty = "0.11"

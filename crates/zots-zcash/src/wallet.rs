@@ -7,30 +7,33 @@ use bip0039::{English, Mnemonic};
 use rand_core::OsRng;
 use tonic::transport::{Channel, ClientTlsConfig};
 use zcash_client_backend::data_api::wallet::{
-    ConfirmationsPolicy, propose_shielding,
+    ConfirmationsPolicy, create_proposed_transactions, propose_shielding,
+    propose_standard_transfer_to_address, SpendingKeys,
 };
-use zcash_client_backend::data_api::{
-    AccountBirthday, AccountPurpose, WalletRead, WalletWrite,
-};
+use zcash_client_backend::data_api::wallet::input_selection::GreedyInputSelector;
+use zcash_client_backend::data_api::{AccountBirthday, AccountPurpose, WalletRead, WalletWrite};
 use zcash_client_backend::fees::standard::SingleOutputChangeStrategy;
 use zcash_client_backend::fees::{DustOutputPolicy, StandardFeeRule};
-use zcash_client_backend::data_api::wallet::input_selection::GreedyInputSelector;
-use zcash_client_sqlite::error::SqliteClientError;
-use zcash_protocol::ShieldedProtocol;
 use zcash_client_backend::keys::UnifiedSpendingKey;
 use zcash_client_backend::proto::service::{
-    self, ChainSpec, compact_tx_streamer_client::CompactTxStreamerClient,
+    self, ChainSpec, RawTransaction, compact_tx_streamer_client::CompactTxStreamerClient,
 };
 use zcash_client_backend::sync::run as sync_run;
+use zcash_client_backend::wallet::OvkPolicy;
 use zcash_client_memory::MemBlockCache;
-use zcash_client_sqlite::WalletDb;
+use zcash_client_sqlite::error::SqliteClientError;
 use zcash_client_sqlite::util::SystemClock;
 use zcash_client_sqlite::wallet::init::init_wallet_db;
+use zcash_client_sqlite::WalletDb;
+use zcash_proofs::prover::LocalTxProver;
 use zcash_protocol::consensus::TEST_NETWORK;
+use zcash_protocol::memo::MemoBytes;
 use zcash_protocol::value::Zatoshis;
+use zcash_protocol::ShieldedProtocol;
 use zip32::AccountId;
 
 use crate::config::ZcashConfig;
+use crate::memo::create_timestamp_memo;
 
 const SYNC_BATCH_SIZE: u32 = 1000;
 
@@ -63,6 +66,39 @@ pub struct BalanceBreakdown {
 
 type ZotsWalletDb =
     WalletDb<rusqlite::Connection, zcash_protocol::consensus::TestNetwork, SystemClock, OsRng>;
+
+/// Helper to build and sign transaction with proper type annotations
+fn build_and_sign_transaction(
+    db: &mut ZotsWalletDb,
+    params: &zcash_protocol::consensus::TestNetwork,
+    prover: &LocalTxProver,
+    spending_keys: &SpendingKeys,
+    proposal: &zcash_client_backend::proposal::Proposal<
+        StandardFeeRule,
+        zcash_client_sqlite::ReceivedNoteId,
+    >,
+) -> anyhow::Result<::nonempty::NonEmpty<zcash_protocol::TxId>> {
+    create_proposed_transactions::<
+        ZotsWalletDb,
+        zcash_protocol::consensus::TestNetwork,
+        zcash_client_backend::data_api::wallet::input_selection::GreedyInputSelectorError,
+        StandardFeeRule,
+        zcash_client_backend::fees::ChangeError<
+            SqliteClientError,
+            zcash_client_sqlite::ReceivedNoteId,
+        >,
+        zcash_client_sqlite::ReceivedNoteId,
+    >(
+        db,
+        params,
+        prover,
+        prover,
+        spending_keys,
+        OvkPolicy::Sender,
+        proposal,
+    )
+    .map_err(|e| anyhow::anyhow!("Failed to create transaction: {:?}", e))
+}
 
 /// Zcash wallet for timestamping operations
 pub struct ZotsWallet {
@@ -283,17 +319,18 @@ impl ZotsWallet {
 
     /// Create and broadcast a timestamp transaction
     ///
-    /// Creates a transaction to anchor the file hash on the Zcash blockchain.
+    /// Creates a shielded transaction with the file hash in the memo field,
+    /// then broadcasts it to the Zcash network.
     pub async fn create_timestamp_tx(
         &mut self,
-        _hash: &[u8; 32],
+        hash: &[u8; 32],
     ) -> anyhow::Result<TimestampTxResult> {
         let accounts = self.db.get_account_ids()?;
         let account_id = accounts
             .first()
             .ok_or_else(|| anyhow::anyhow!("No account found"))?;
 
-        // Check balance in each pool
+        // Check balance
         let summary = self.db.get_wallet_summary(ConfirmationsPolicy::MIN)?;
         let (transparent_balance, orchard_balance, sapling_balance) = summary
             .as_ref()
@@ -310,29 +347,109 @@ impl ZotsWallet {
         let total_shielded = orchard_balance + sapling_balance;
         let min_required = 20000u64; // ZIP-317 minimum fee
 
-        // Check if we have sufficient shielded funds
-        if total_shielded >= min_required {
-            // TODO: Implement shielded transaction creation with memo
+        // Need shielded funds to send memo
+        if total_shielded < min_required {
+            if transparent_balance >= min_required {
+                return Err(anyhow::anyhow!(
+                    "Your funds are in the transparent pool.\n\
+                    Shield them first using Zingo or zcashd, then try again."
+                ));
+            }
             return Err(anyhow::anyhow!(
-                "You have {:.8} ZEC in shielded pools.\n\n\
-                Full transaction support (with zk-SNARK proofs) is coming soon.\n\
-                For now, use Zingo wallet to send a memo transaction with your file hash.",
-                total_shielded as f64 / 100_000_000.0
+                "Insufficient funds. Run 'zots wallet address' and fund your wallet."
             ));
         }
 
-        // If only transparent funds available
-        if transparent_balance >= min_required {
+        // Get the wallet's own address to send to self
+        let addresses = self.db.list_addresses(*account_id)?;
+        let address = addresses
+            .first()
+            .ok_or_else(|| anyhow::anyhow!("No address found"))?
+            .address()
+            .clone();
+
+        // Create memo with timestamp data
+        let memo_data = create_timestamp_memo(hash);
+        let memo = MemoBytes::from_bytes(&memo_data)
+            .map_err(|_| anyhow::anyhow!("Failed to create memo"))?;
+
+        // Derive spending key
+        let usk = UnifiedSpendingKey::from_seed(&TEST_NETWORK, &self.seed, AccountId::ZERO)
+            .map_err(|e| anyhow::anyhow!("Failed to derive spending key: {:?}", e))?;
+
+        // Create proposal for self-send with memo
+        // Send dust amount (just to carry the memo)
+        let dust_amount = Zatoshis::from_u64(10000).unwrap(); // 0.0001 ZEC
+
+        let proposal = propose_standard_transfer_to_address::<_, _, SqliteClientError>(
+            &mut self.db,
+            &TEST_NETWORK,
+            StandardFeeRule::Zip317,
+            *account_id,
+            ConfirmationsPolicy::MIN,
+            &address,
+            dust_amount,
+            Some(memo),
+            None, // no change memo
+            ShieldedProtocol::Orchard,
+        )
+        .map_err(|e| anyhow::anyhow!("Failed to create transaction proposal: {:?}", e))?;
+
+        // Load bundled Sapling prover (includes proving parameters)
+        let prover = LocalTxProver::bundled();
+        let spending_keys = SpendingKeys::from_unified_spending_key(usk);
+
+        // Build the transaction using helper to handle complex type inference
+        let txids = build_and_sign_transaction(
+            &mut self.db,
+            &TEST_NETWORK,
+            &prover,
+            &spending_keys,
+            &proposal,
+        )?;
+
+        // NonEmpty guarantees at least one element
+        let txid = *txids.first();
+
+        // Get the transaction from the database
+        let tx = self
+            .db
+            .get_transaction(txid)?
+            .ok_or_else(|| anyhow::anyhow!("Transaction not found in database"))?;
+
+        // Serialize the transaction to bytes
+        let mut tx_bytes = Vec::new();
+        tx.write(&mut tx_bytes)
+            .map_err(|e| anyhow::anyhow!("Failed to serialize transaction: {:?}", e))?;
+
+        // Broadcast transaction
+        let raw_tx = RawTransaction {
+            data: tx_bytes,
+            height: 0, // Will be set by lightwalletd
+        };
+
+        let response = self
+            .client
+            .send_transaction(raw_tx)
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to broadcast transaction: {:?}", e))?;
+
+        let send_response = response.into_inner();
+        // error_code 0 means success, error_message may contain txid on success
+        if send_response.error_code != 0 {
             return Err(anyhow::anyhow!(
-                "Your funds are in the transparent pool.\n\
-                Shield them first using Zingo or zcashd, then try again."
+                "Transaction rejected (code {}): {}",
+                send_response.error_code,
+                send_response.error_message
             ));
         }
 
-        // No funds at all
-        Err(anyhow::anyhow!(
-            "Insufficient funds. Run 'zots wallet address' and fund your wallet."
-        ))
+        // Return the transaction ID (use Display formatting which reverses bytes for user display)
+        let txid_bytes: [u8; 32] = txid.into();
+        Ok(TimestampTxResult {
+            txid: txid.to_string(), // Uses the Display impl which gives explorer-friendly format
+            txid_bytes,
+        })
     }
 
     /// Wait for transaction confirmation

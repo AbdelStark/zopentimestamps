@@ -44,3 +44,4 @@ time.workspace = true
 chrono.workspace = true
 dotenvy.workspace = true
 dirs.workspace = true
+nonempty.workspace = true
