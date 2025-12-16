@@ -8,6 +8,7 @@ Timestamp any file or hash on the Zcash blockchain to create cryptographic proof
 
 - **Timestamp files or hashes** on the Zcash blockchain
 - **Verify timestamps** with .zots proof files
+- **Embeddable proofs** - compact CBOR+Base64 format for photos, screenshots, git commits
 - **Cypherpunk TUI** with ASCII art interface
 - **Testnet support** for development and testing
 - **Shielded transactions** using Orchard/Sapling protocols
@@ -107,6 +108,21 @@ zots verify document.pdf.zots -f document.pdf
 zots info document.pdf.zots
 ```
 
+### Encode/Decode Compact Format
+
+Convert between JSON (.zots) and compact (embeddable) format:
+
+```bash
+# Encode a .zots file to compact format
+zots encode document.pdf.zots
+
+# Decode a compact string to JSON
+zots decode "zots1o2d2ZXJzaW9u..."
+
+# Save decoded proof to file
+zots decode "zots1o2d2ZXJzaW9u..." -o proof.zots
+```
+
 ### Wallet Commands
 
 ```bash
@@ -166,6 +182,31 @@ Fields:
   - `block_height`: Block number where the transaction was confirmed
   - `block_time`: Unix timestamp of the block
   - `memo_offset`: Offset in memo field (usually 0)
+
+## Compact Format (Embeddable)
+
+For embedding timestamps in files (EXIF metadata, git commits, QR codes), proofs can be encoded to a compact CBOR+Base64 format:
+
+```
+zots1o2d2ZXJzaW9uAWRoYXNoeEBhYmNkZWYxMjM0NTY3ODkw...
+```
+
+The format:
+- Prefix: `zots1` (version identifier)
+- Payload: CBOR-encoded proof, Base64url-encoded (no padding)
+
+Use cases:
+- **Screenshots**: Embed in EXIF/XMP metadata
+- **Photos**: Store in image metadata
+- **Git commits**: Include in commit message trailer
+- **Documents**: Embed in PDF metadata
+
+Example git commit with embedded timestamp:
+```
+Fix authentication bug
+
+Timestamp: zots1o2d2ZXJzaW9uAWRoYXNoeEBhYmNkZWYxMjM0NTY3ODkw...
+```
 
 ## How It Works
 

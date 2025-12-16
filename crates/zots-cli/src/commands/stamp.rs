@@ -87,6 +87,10 @@ pub async fn run(
         print_warning("Not waiting for confirmation - proof will be pending");
         proof.save(&output_path)?;
         print_success(&format!("Pending proof saved: {}", output_path.display()));
+
+        // Show compact format for embedding
+        println!();
+        print_info("Compact", &proof.to_compact()?);
         return Ok(());
     }
 
@@ -110,6 +114,14 @@ pub async fn run(
 
     print_success(&format!("Confirmed in block {}", confirmation.block_height));
     print_success(&format!("Proof saved: {}", output_path.display()));
+
+    // Show compact format for embedding
+    println!();
+    print_header("Embeddable Proof");
+    let compact = proof.to_compact()?;
+    println!("{}", compact);
+    println!();
+    print_info("Length", &format!("{} chars", compact.len()));
 
     Ok(())
 }

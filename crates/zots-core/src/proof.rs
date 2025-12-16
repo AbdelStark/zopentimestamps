@@ -1,10 +1,15 @@
 //! .zots proof format
 //!
 //! Human-readable JSON format for timestamp proofs with Zcash attestations.
+//! Also supports compact CBOR+Base64 encoding for embedding in files.
 
 use crate::{Error, Hash256, Result};
+use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+
+/// Prefix for compact CBOR+Base64 encoded proofs
+pub const COMPACT_PREFIX: &str = "zots1";
 
 /// Magic header for ZOTS timestamp memo: \x00zOTS\x00\x00\x01
 /// Used in blockchain memo fields to identify timestamp data
@@ -197,6 +202,63 @@ impl TimestampProof {
         let data = std::fs::read_to_string(path)?;
         Self::deserialize(&data)
     }
+
+    /// Encode the proof to compact CBOR+Base64 format
+    ///
+    /// Returns a string like "zots1..." that can be embedded in files,
+    /// EXIF metadata, git commit messages, etc.
+    pub fn to_compact(&self) -> Result<String> {
+        let mut cbor_data = Vec::new();
+        ciborium::into_writer(self, &mut cbor_data)
+            .map_err(|e| Error::InvalidProof(format!("CBOR encoding failed: {}", e)))?;
+
+        let encoded = URL_SAFE_NO_PAD.encode(&cbor_data);
+        Ok(format!("{}{}", COMPACT_PREFIX, encoded))
+    }
+
+    /// Decode a proof from compact CBOR+Base64 format
+    ///
+    /// Accepts strings starting with "zots1..."
+    pub fn from_compact(compact: &str) -> Result<Self> {
+        let data = compact.trim();
+
+        if !data.starts_with(COMPACT_PREFIX) {
+            return Err(Error::InvalidProof(format!(
+                "Invalid compact format: must start with '{}'",
+                COMPACT_PREFIX
+            )));
+        }
+
+        let encoded = &data[COMPACT_PREFIX.len()..];
+        let cbor_data = URL_SAFE_NO_PAD
+            .decode(encoded)
+            .map_err(|e| Error::InvalidProof(format!("Base64 decode failed: {}", e)))?;
+
+        let proof: Self = ciborium::from_reader(&cbor_data[..])
+            .map_err(|e| Error::InvalidProof(format!("CBOR decode failed: {}", e)))?;
+
+        if proof.version != PROOF_VERSION {
+            return Err(Error::InvalidProof(format!(
+                "Unsupported version: {}",
+                proof.version
+            )));
+        }
+
+        // Validate hash is valid hex
+        let _ = proof.hash_bytes()?;
+
+        // Validate all txids are valid hex
+        for att in &proof.attestations {
+            let _ = att.txid_bytes()?;
+        }
+
+        Ok(proof)
+    }
+
+    /// Check if a string is a valid compact proof format
+    pub fn is_compact_format(s: &str) -> bool {
+        s.trim().starts_with(COMPACT_PREFIX)
+    }
 }
 
 #[cfg(test)]
@@ -370,5 +432,84 @@ mod tests {
 
         // Cleanup
         std::fs::remove_file(&temp_path).ok();
+    }
+
+    #[test]
+    fn test_compact_roundtrip() {
+        let hash = [0xABu8; 32];
+        let mut proof = TimestampProof::new(hash);
+        proof.add_attestation(ZcashAttestation::new(
+            Network::Testnet,
+            [0xCDu8; 32],
+            3721456,
+            1734567890,
+            8,
+        ));
+
+        let compact = proof.to_compact().unwrap();
+        assert!(compact.starts_with(COMPACT_PREFIX));
+
+        let decoded = TimestampProof::from_compact(&compact).unwrap();
+        assert_eq!(decoded.version, proof.version);
+        assert_eq!(decoded.hash, proof.hash);
+        assert_eq!(decoded.attestations.len(), 1);
+        assert_eq!(decoded.attestations[0].network, Network::Testnet);
+        assert_eq!(decoded.attestations[0].block_height, 3721456);
+    }
+
+    #[test]
+    fn test_compact_is_shorter_than_json() {
+        let hash = [0xABu8; 32];
+        let mut proof = TimestampProof::new(hash);
+        proof.add_attestation(ZcashAttestation::new(
+            Network::Testnet,
+            [0xCDu8; 32],
+            3721456,
+            1734567890,
+            8,
+        ));
+
+        let json = proof.serialize().unwrap();
+        let compact = proof.to_compact().unwrap();
+
+        // Compact should be significantly shorter
+        assert!(
+            compact.len() < json.len(),
+            "Compact ({}) should be shorter than JSON ({})",
+            compact.len(),
+            json.len()
+        );
+    }
+
+    #[test]
+    fn test_compact_invalid_prefix() {
+        assert!(TimestampProof::from_compact("invalid").is_err());
+        assert!(TimestampProof::from_compact("zots2abc").is_err());
+    }
+
+    #[test]
+    fn test_compact_invalid_base64() {
+        assert!(TimestampProof::from_compact("zots1!!!invalid!!!").is_err());
+    }
+
+    #[test]
+    fn test_is_compact_format() {
+        assert!(TimestampProof::is_compact_format("zots1abc123"));
+        assert!(TimestampProof::is_compact_format("  zots1abc123  "));
+        assert!(!TimestampProof::is_compact_format("abc123"));
+        assert!(!TimestampProof::is_compact_format("{\"version\": 1}"));
+    }
+
+    #[test]
+    fn test_compact_pending_proof() {
+        // Test compact encoding of a pending proof (no attestations)
+        let hash = [0x42u8; 32];
+        let proof = TimestampProof::new(hash);
+
+        let compact = proof.to_compact().unwrap();
+        let decoded = TimestampProof::from_compact(&compact).unwrap();
+
+        assert_eq!(decoded.hash, proof.hash);
+        assert!(decoded.attestations.is_empty());
     }
 }

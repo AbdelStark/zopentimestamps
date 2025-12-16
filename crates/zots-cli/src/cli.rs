@@ -54,6 +54,22 @@ pub enum Commands {
         proof: PathBuf,
     },
 
+    /// Encode a .zots proof to compact format (CBOR+Base64)
+    Encode {
+        /// Proof file (.zots) or compact string to encode
+        input: String,
+    },
+
+    /// Decode a compact proof string to JSON
+    Decode {
+        /// Compact proof string (zots1...) to decode
+        compact: String,
+
+        /// Output file path (default: stdout)
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+    },
+
     /// Wallet management commands
     Wallet {
         #[command(subcommand)]

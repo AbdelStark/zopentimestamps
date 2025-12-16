@@ -25,6 +25,8 @@ async fn main() -> anyhow::Result<()> {
         } => commands::stamp::run(file, hash, output, no_wait).await,
         Commands::Verify { proof, file } => commands::verify::run(proof, file).await,
         Commands::Info { proof } => commands::info::run(proof),
+        Commands::Encode { input } => commands::encode::run(input),
+        Commands::Decode { compact, output } => commands::decode::run(compact, output),
         Commands::Wallet { command } => match command {
             WalletCommands::Sync => commands::wallet::sync().await,
             WalletCommands::Balance => commands::wallet::balance().await,

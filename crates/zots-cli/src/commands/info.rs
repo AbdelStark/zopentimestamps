@@ -27,12 +27,20 @@ pub fn run(proof_path: PathBuf) -> anyhow::Result<()> {
             println!();
             println!("  {} Attestation #{}", "─".repeat(3), i + 1);
             print_info("  Network", &att.network.to_string());
-            print_info("  TXID", &att.txid_hex());
+            print_info("  TXID", att.txid_hex());
             print_info("  Block", &att.block_height.to_string());
             print_info("  Time", &att.timestamp().to_rfc3339());
             print_link("  Explorer", &att.explorer_link());
         }
     }
+
+    // Show compact format for embedding
+    println!();
+    print_header("Embeddable Proof");
+    let compact = proof.to_compact()?;
+    println!("{}", compact);
+    println!();
+    print_info("Length", &format!("{} chars", compact.len()));
 
     Ok(())
 }
