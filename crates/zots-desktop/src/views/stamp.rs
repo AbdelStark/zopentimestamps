@@ -8,7 +8,7 @@ use iced::{Alignment, Element, Length};
 
 pub fn view(app: &ZotsApp) -> Element<Message> {
     let title = row![
-        text("📝").size(28),
+        text("✎").size(28),
         Space::with_width(12),
         text("Create Timestamp").size(24),
     ]
@@ -28,7 +28,7 @@ pub fn view(app: &ZotsApp) -> Element<Message> {
         .on_input(Message::StampInputChanged);
 
     let browse_btn = button(
-        row![text("📁").size(14), Space::with_width(8), text("Browse").size(14),]
+        row![text("□").size(14), Space::with_width(8), text("Browse").size(14),]
             .align_y(Alignment::Center),
     )
     .padding([12, 16])
@@ -75,7 +75,7 @@ pub fn view(app: &ZotsApp) -> Element<Message> {
     } else {
         button(
             row![
-                text("⏰").size(16),
+                text("◷").size(16),
                 Space::with_width(12),
                 text("Create Timestamp").size(14),
             ]
@@ -134,7 +134,7 @@ pub fn view(app: &ZotsApp) -> Element<Message> {
         content_col = content_col.push(row![
             button(
                 row![
-                    text("📋").size(14),
+                    text("≡").size(14),
                     Space::with_width(8),
                     text("Copy Proof").size(13),
                 ]
@@ -146,7 +146,7 @@ pub fn view(app: &ZotsApp) -> Element<Message> {
             Space::with_width(12),
             button(
                 row![
-                    text("🔗").size(14),
+                    text("→").size(14),
                     Space::with_width(8),
                     text("View in Explorer").size(13),
                 ]
@@ -243,7 +243,7 @@ fn info_row(label: &'static str, value: String, copyable: bool) -> Element<'stat
     if copyable {
         r = r.push(Space::with_width(12));
         r = r.push(
-            button(text("📋").size(11))
+            button(text("≡").size(11))
                 .padding([4, 8])
                 .style(theme::button_style::secondary)
                 .on_press(Message::CopyToClipboard(value)),

@@ -91,12 +91,12 @@ impl View {
 
     pub fn icon(&self) -> &'static str {
         match self {
-            View::Home => "🏠",
-            View::Stamp => "📝",
-            View::Verify => "🔍",
-            View::History => "📋",
-            View::Wallet => "💰",
-            View::Settings => "⚙️",
+            View::Home => "⌂",
+            View::Stamp => "✎",
+            View::Verify => "✓",
+            View::History => "≡",
+            View::Wallet => "◈",
+            View::Settings => "⚙",
         }
     }
 }

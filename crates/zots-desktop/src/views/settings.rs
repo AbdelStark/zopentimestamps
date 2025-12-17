@@ -8,7 +8,7 @@ use iced::{Alignment, Element, Length};
 
 pub fn view(app: &ZotsApp) -> Element<Message> {
     let title = row![
-        text("⚙️").size(28),
+        text("⚙").size(28),
         Space::with_width(12),
         text("Settings").size(24),
     ]
@@ -64,7 +64,7 @@ pub fn view(app: &ZotsApp) -> Element<Message> {
     // Action buttons
     let save_btn = button(
         row![
-            text("💾").size(14),
+            text("▶").size(14),
             Space::with_width(8),
             text("Save Settings").size(14),
         ]
@@ -120,7 +120,7 @@ pub fn view(app: &ZotsApp) -> Element<Message> {
             row![
                 button(
                     row![
-                        text("🔗").size(14),
+                        text("→").size(14),
                         Space::with_width(8),
                         text("GitHub").size(13),
                     ]

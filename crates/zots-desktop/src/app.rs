@@ -473,7 +473,7 @@ impl ZotsApp {
             .collect();
 
         let logo = row![
-            text("⏰").size(28),
+            text("◷").size(28),
             Space::with_width(8),
             column![
                 text("zOpenTimestamps").size(16).font(Font::DEFAULT),

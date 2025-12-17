@@ -8,7 +8,7 @@ use iced::{Alignment, Element, Length};
 
 pub fn view(app: &ZotsApp) -> Element<Message> {
     let title = row![
-        text("🔍").size(28),
+        text("⊙").size(28),
         Space::with_width(12),
         text("Verify Proof").size(24),
     ]
@@ -31,7 +31,7 @@ pub fn view(app: &ZotsApp) -> Element<Message> {
     .on_input(Message::VerifyFileInputChanged);
 
     let browse_file_btn = button(
-        row![text("📁").size(14), Space::with_width(8), text("Browse").size(14),]
+        row![text("□").size(14), Space::with_width(8), text("Browse").size(14),]
             .align_y(Alignment::Center),
     )
     .padding([12, 16])
@@ -52,7 +52,7 @@ pub fn view(app: &ZotsApp) -> Element<Message> {
         .on_input(Message::VerifyProofInputChanged);
 
     let browse_proof_btn = button(
-        row![text("📁").size(14), Space::with_width(8), text("Browse").size(14),]
+        row![text("□").size(14), Space::with_width(8), text("Browse").size(14),]
             .align_y(Alignment::Center),
     )
     .padding([12, 16])
@@ -170,7 +170,7 @@ pub fn view(app: &ZotsApp) -> Element<Message> {
 
         let copy_btn = button(
             row![
-                text("📋").size(14),
+                text("≡").size(14),
                 Space::with_width(8),
                 text("Copy Compact").size(13),
             ]
@@ -187,7 +187,7 @@ pub fn view(app: &ZotsApp) -> Element<Message> {
             buttons_row = buttons_row.push(
                 button(
                     row![
-                        text("🔗").size(14),
+                        text("→").size(14),
                         Space::with_width(8),
                         text("View in Explorer").size(13),
                     ]

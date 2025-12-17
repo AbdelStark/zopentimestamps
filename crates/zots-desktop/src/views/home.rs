@@ -27,11 +27,11 @@ pub fn view(app: &ZotsApp) -> Element<Message> {
         .to_string();
     let stats = container(
         row![
-            stat_card("💰", "Balance", balance_str),
+            stat_card("◈", "Balance", balance_str),
             Space::with_width(16),
-            stat_card("📦", "Block Height", block_str),
+            stat_card("▣", "Block Height", block_str),
             Space::with_width(16),
-            stat_card("🔗", "Network", network_str),
+            stat_card("→", "Network", network_str),
         ]
         .padding([0, 0]),
     );
@@ -42,21 +42,21 @@ pub fn view(app: &ZotsApp) -> Element<Message> {
         .style(theme::text_style::muted());
 
     let stamp_action = action_card(
-        "📝",
+        "✎",
         "Create Timestamp",
         "Timestamp a file or hash on the Zcash blockchain",
         View::Stamp,
     );
 
     let verify_action = action_card(
-        "🔍",
+        "✓",
         "Verify Proof",
         "Verify a timestamp proof against the blockchain",
         View::Verify,
     );
 
     let wallet_action = action_card(
-        "💰",
+        "◈",
         "Wallet",
         "View balance and configure your wallet",
         View::Wallet,
@@ -67,7 +67,7 @@ pub fn view(app: &ZotsApp) -> Element<Message> {
     // Security warning
     let warning = container(
         row![
-            text("⚠️").size(20),
+            text("⚠").size(20),
             Space::with_width(12),
             column![
                 text("Testnet Only")
