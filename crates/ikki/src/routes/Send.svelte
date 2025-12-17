@@ -71,11 +71,10 @@
 </script>
 
 <div class="send">
-  <!-- Header -->
   {#if $sendPhase !== "complete"}
     <header class="send-header">
       <button class="back-button" onclick={handleBack}>
-        <ArrowLeft size={20} />
+        <ArrowLeft size={20} strokeWidth={2} />
       </button>
       <h1>Send</h1>
       <div class="header-spacer"></div>
@@ -84,10 +83,9 @@
 
   <div class="send-content">
     {#if $sendPhase === "input"}
-      <!-- Input Phase -->
       <div class="input-phase animate-fade-in">
         <div class="balance-display">
-          <span class="balance-label">Available Balance</span>
+          <span class="balance-label">Available</span>
           <span class="balance-value">{formatZec($balance)} ZEC</span>
         </div>
 
@@ -106,14 +104,14 @@
 
           <Input
             label="Recipient Address"
-            placeholder="Enter address"
+            placeholder="Enter Zcash address"
             value={$sendAddress}
             oninput={handleAddressInput}
           />
 
           <Input
             label="Memo (optional)"
-            placeholder="Add a note"
+            placeholder="Add a private note"
             value={$sendMemo}
             oninput={handleMemoInput}
           />
@@ -133,7 +131,6 @@
       </div>
 
     {:else if $sendPhase === "preview"}
-      <!-- Preview Phase -->
       <div class="preview-phase animate-fade-in">
         <div class="preview-amount">
           <span class="amount-value">{formatZec(amountZatoshis)}</span>
@@ -143,7 +140,7 @@
         <div class="preview-card">
           <div class="preview-row">
             <span class="preview-label">To</span>
-            <span class="preview-value address">{truncateAddress($sendAddress, 10)}</span>
+            <span class="preview-value mono">{truncateAddress($sendAddress, 12)}</span>
           </div>
           <div class="preview-divider"></div>
           <div class="preview-row">
@@ -151,8 +148,8 @@
             <span class="preview-value">{formatZec(amountZatoshis)} ZEC</span>
           </div>
           <div class="preview-row">
-            <span class="preview-label">Network Fee</span>
-            <span class="preview-value">{formatZec(FEE)} ZEC</span>
+            <span class="preview-label">Network fee</span>
+            <span class="preview-value secondary">{formatZec(FEE)} ZEC</span>
           </div>
           <div class="preview-divider"></div>
           <div class="preview-row total">
@@ -169,76 +166,52 @@
         </div>
 
         <div class="form-actions">
-          <Button
-            variant="primary"
-            size="lg"
-            fullWidth
-            onclick={confirmSend}
-          >
+          <Button variant="primary" size="lg" fullWidth onclick={confirmSend}>
             Confirm Send
           </Button>
-          <Button
-            variant="ghost"
-            size="lg"
-            fullWidth
-            onclick={goBackToInput}
-          >
+          <Button variant="ghost" size="lg" fullWidth onclick={goBackToInput}>
             Edit
           </Button>
         </div>
       </div>
 
     {:else if $sendPhase === "sending"}
-      <!-- Sending Phase -->
-      <div class="sending-phase animate-fade-in">
-        <div class="sending-spinner">
-          <Loader2 size={40} class="spin" />
+      <div class="status-phase animate-fade-in">
+        <div class="status-icon spinning">
+          <Loader2 size={32} class="spin" />
         </div>
-        <h2>Processing</h2>
-        <p>Please wait while your transaction is being sent...</p>
+        <h2>Sending</h2>
+        <p>Broadcasting transaction to the network...</p>
       </div>
 
     {:else if $sendPhase === "complete"}
-      <!-- Complete Phase -->
-      <div class="complete-phase animate-fade-in">
-        <div class="success-icon">
-          <Check size={32} strokeWidth={2.5} />
+      <div class="status-phase animate-fade-in">
+        <div class="status-icon success">
+          <Check size={28} strokeWidth={2.5} />
         </div>
         <h2>Sent</h2>
-        <p class="txid">
-          {truncateAddress($sendTxid || "", 12)}
-        </p>
-        <div class="form-actions">
-          <Button
-            variant="primary"
-            size="lg"
-            fullWidth
-            onclick={handleDone}
-          >
+        <div class="txid-badge">
+          {truncateAddress($sendTxid || "", 14)}
+        </div>
+        <div class="form-actions wide">
+          <Button variant="primary" size="lg" fullWidth onclick={handleDone}>
             Done
           </Button>
         </div>
       </div>
 
     {:else if $sendPhase === "error"}
-      <!-- Error Phase -->
-      <div class="error-phase animate-fade-in">
-        <div class="error-icon">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"/>
-            <line x1="15" y1="9" x2="9" y2="15"/>
-            <line x1="9" y1="9" x2="15" y2="15"/>
+      <div class="status-phase animate-fade-in">
+        <div class="status-icon error">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
           </svg>
         </div>
         <h2>Failed</h2>
-        <p class="error-message">{$sendError}</p>
-        <div class="form-actions">
-          <Button
-            variant="primary"
-            size="lg"
-            fullWidth
-            onclick={goBackToInput}
-          >
+        <p class="error-text">{$sendError}</p>
+        <div class="form-actions wide">
+          <Button variant="primary" size="lg" fullWidth onclick={goBackToInput}>
             Try Again
           </Button>
         </div>
@@ -259,7 +232,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: var(--space-md) var(--space-lg);
+    padding: var(--space-3) var(--space-5);
     border-bottom: 1px solid var(--border);
   }
 
@@ -275,6 +248,7 @@
     cursor: pointer;
     border-radius: var(--radius-md);
     transition: all var(--transition-fast);
+    -webkit-tap-highlight-color: transparent;
   }
 
   .back-button:hover {
@@ -282,11 +256,15 @@
     background: var(--bg-card);
   }
 
+  .back-button:active {
+    transform: scale(0.95);
+  }
+
   .send-header h1 {
     font-size: var(--text-body);
     font-weight: var(--weight-semibold);
     color: var(--text-primary);
-    letter-spacing: 0.02em;
+    letter-spacing: 0.01em;
   }
 
   .header-spacer {
@@ -295,7 +273,7 @@
 
   .send-content {
     flex: 1;
-    padding: var(--space-lg);
+    padding: var(--space-5);
     max-width: var(--max-width);
     margin: 0 auto;
     width: 100%;
@@ -305,14 +283,15 @@
   .input-phase {
     display: flex;
     flex-direction: column;
-    gap: var(--space-xl);
+    gap: var(--space-6);
+    min-height: 100%;
   }
 
   .balance-display {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: var(--space-md) var(--space-lg);
+    padding: var(--space-3) var(--space-4);
     background: var(--bg-card);
     border-radius: var(--radius-md);
     border: 1px solid var(--border);
@@ -320,7 +299,8 @@
 
   .balance-label {
     font-size: var(--text-small);
-    color: var(--text-secondary);
+    color: var(--text-tertiary);
+    letter-spacing: 0.01em;
   }
 
   .balance-value {
@@ -328,12 +308,13 @@
     font-weight: var(--weight-semibold);
     color: var(--text-primary);
     font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
   }
 
   .form-section {
     display: flex;
     flex-direction: column;
-    gap: var(--space-lg);
+    gap: var(--space-5);
   }
 
   .amount-input-wrapper {
@@ -342,45 +323,55 @@
 
   .max-button {
     position: absolute;
-    right: var(--space-sm);
+    right: 12px;
     top: 50%;
-    transform: translateY(25%);
-    padding: var(--space-xs) var(--space-md);
+    transform: translateY(20%);
+    padding: 5px 10px;
     background: var(--bg-elevated);
-    color: var(--text-secondary);
+    color: var(--text-tertiary);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
-    font-size: var(--text-caption);
-    font-weight: var(--weight-medium);
+    font-size: 10px;
+    font-weight: var(--weight-semibold);
     cursor: pointer;
     transition: all var(--transition-fast);
-    letter-spacing: 0.05em;
+    letter-spacing: var(--tracking-widest);
+    -webkit-tap-highlight-color: transparent;
   }
 
   .max-button:hover {
     background: var(--text-primary);
-    color: var(--bg-primary);
+    color: var(--text-inverse);
     border-color: var(--text-primary);
+  }
+
+  .max-button:active {
+    transform: translateY(20%) scale(0.95);
   }
 
   .form-actions {
     display: flex;
     flex-direction: column;
-    gap: var(--space-md);
+    gap: var(--space-3);
     margin-top: auto;
-    padding-top: var(--space-xl);
+    padding-top: var(--space-6);
+  }
+
+  .form-actions.wide {
+    width: 100%;
+    padding: var(--space-6) var(--space-4) 0;
   }
 
   /* Preview Phase */
   .preview-phase {
     display: flex;
     flex-direction: column;
-    gap: var(--space-xl);
+    gap: var(--space-6);
   }
 
   .preview-amount {
     text-align: center;
-    padding: var(--space-xl) 0;
+    padding: var(--space-6) 0 var(--space-4);
   }
 
   .amount-value {
@@ -388,36 +379,45 @@
     font-weight: var(--weight-bold);
     color: var(--text-primary);
     font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: var(--tracking-tight);
   }
 
   .amount-currency {
-    font-size: var(--text-h3);
+    font-size: var(--text-body);
     font-weight: var(--weight-medium);
     color: var(--text-tertiary);
-    margin-left: var(--space-sm);
+    margin-left: var(--space-2);
+    letter-spacing: 0.05em;
   }
 
   .preview-card {
     background: var(--bg-card);
     border-radius: var(--radius-lg);
     border: 1px solid var(--border);
-    padding: var(--space-lg);
+    padding: var(--space-4);
   }
 
   .preview-row {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    padding: var(--space-sm) 0;
+    padding: var(--space-2) 0;
   }
 
   .preview-row.total {
+    padding-top: var(--space-3);
+  }
+
+  .preview-row.total .preview-label,
+  .preview-row.total .preview-value {
     font-weight: var(--weight-semibold);
   }
 
   .preview-label {
     font-size: var(--text-small);
     color: var(--text-secondary);
+    letter-spacing: 0.01em;
   }
 
   .preview-value {
@@ -426,10 +426,16 @@
     text-align: right;
     max-width: 60%;
     word-break: break-all;
+    letter-spacing: 0.01em;
   }
 
-  .preview-value.address {
+  .preview-value.mono {
     font-family: var(--font-mono);
+    font-size: var(--text-caption);
+  }
+
+  .preview-value.secondary {
+    color: var(--text-tertiary);
   }
 
   .preview-value.memo {
@@ -439,100 +445,82 @@
 
   .preview-divider {
     height: 1px;
-    background: var(--border);
-    margin: var(--space-sm) 0;
+    background: var(--divider);
+    margin: var(--space-2) 0;
   }
 
-  /* Sending Phase */
-  .sending-phase {
+  /* Status Phases */
+  .status-phase {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     text-align: center;
-    padding: var(--space-3xl) 0;
-    gap: var(--space-lg);
+    padding: var(--space-16) var(--space-4);
+    gap: var(--space-4);
+    min-height: 60vh;
   }
 
-  .sending-spinner {
-    color: var(--text-secondary);
-  }
-
-  .sending-spinner :global(.spin) {
-    animation: spin 1s linear infinite;
-  }
-
-  .sending-phase h2 {
-    font-size: var(--text-h3);
-    color: var(--text-primary);
-  }
-
-  .sending-phase p {
-    color: var(--text-secondary);
-    font-size: var(--text-small);
-  }
-
-  /* Complete Phase */
-  .complete-phase {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    padding: var(--space-3xl) 0;
-    gap: var(--space-lg);
-  }
-
-  .success-icon {
-    width: 64px;
-    height: 64px;
+  .status-icon {
+    width: 72px;
+    height: 72px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--bg-card);
-    border: 2px solid var(--text-secondary);
-    color: var(--text-primary);
+    margin-bottom: var(--space-2);
   }
 
-  .complete-phase h2 {
-    font-size: var(--text-h3);
-    color: var(--text-primary);
-  }
-
-  .txid {
-    font-family: var(--font-mono);
-    font-size: var(--text-small);
-    color: var(--text-tertiary);
+  .status-icon.spinning {
     background: var(--bg-card);
-    padding: var(--space-sm) var(--space-md);
-    border-radius: var(--radius-sm);
     border: 1px solid var(--border);
-  }
-
-  /* Error Phase */
-  .error-phase {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    padding: var(--space-3xl) 0;
-    gap: var(--space-lg);
-  }
-
-  .error-icon {
-    color: var(--text-tertiary);
-  }
-
-  .error-phase h2 {
-    font-size: var(--text-h3);
-    color: var(--text-primary);
-  }
-
-  .error-message {
     color: var(--text-secondary);
-    max-width: 80%;
+  }
+
+  .status-icon.spinning :global(.spin) {
+    animation: spin 1s linear infinite;
+  }
+
+  .status-icon.success {
+    background: var(--receive-dim);
+    border: 1px solid rgba(74, 222, 128, 0.2);
+    color: var(--receive);
+  }
+
+  .status-icon.error {
+    background: var(--error-dim);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    color: var(--error);
+  }
+
+  .status-phase h2 {
+    font-size: var(--text-h2);
+    font-weight: var(--weight-semibold);
+    color: var(--text-primary);
+    letter-spacing: var(--tracking-tight);
+  }
+
+  .status-phase p {
+    color: var(--text-tertiary);
     font-size: var(--text-small);
+    max-width: 260px;
+    line-height: var(--leading-relaxed);
+  }
+
+  .txid-badge {
+    font-family: var(--font-mono);
+    font-size: var(--text-caption);
+    color: var(--text-tertiary);
+    background: var(--bg-card);
+    padding: var(--space-2) var(--space-4);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    letter-spacing: 0.02em;
+  }
+
+  .error-text {
+    color: var(--text-secondary);
+    font-size: var(--text-small);
+    max-width: 280px;
   }
 </style>
