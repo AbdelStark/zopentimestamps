@@ -41,7 +41,7 @@ pub fn view(app: &IkkiApp) -> Element<Message> {
         Space::with_height(spacing::XXS),
         subtitle,
         Space::with_height(spacing::LG),
-        scrollable(transaction_list).height(Length::Fill),
+        scrollable(column![transaction_list]),
     ]
     .width(Length::Fill)
     .max_width(600)

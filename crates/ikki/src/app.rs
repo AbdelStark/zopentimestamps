@@ -7,8 +7,8 @@ use crate::message::{
 use crate::theme::{self, colors, spacing, typography};
 use crate::views;
 use anyhow::Result;
-use iced::widget::{Space, button, column, container, row, scrollable, text};
-use iced::{Alignment, Element, Length, Subscription, Task};
+use iced::widget::{Space, button, column, container, row, text};
+use iced::{Element, Length, Subscription, Task};
 use std::time::Duration;
 use zots_zcash::ZcashConfig;
 
@@ -519,17 +519,11 @@ impl IkkiApp {
             View::Onboarding => self.onboarding_view(),
         };
 
-        let main_content = container(
-            scrollable(
-                container(content)
-                    .width(Length::Fill)
-                    .padding([spacing::LG, spacing::XL]),
-            )
-            .style(theme::scrollable_style::default),
-        )
-        .style(theme::container_style::background)
-        .width(Length::Fill)
-        .height(Length::Fill);
+        let main_content = container(content)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .padding([spacing::LG, spacing::XL])
+            .style(theme::container_style::background);
 
         // Toast overlay
         let toast_overlay = if let Some((msg, toast_type)) = &self.toast {
@@ -657,272 +651,95 @@ impl IkkiApp {
     }
 
     fn onboarding_welcome(&self) -> Element<Message> {
-        let content = column![
-            Space::with_height(Length::Fill),
-            text("Ikki")
-                .size(typography::DISPLAY)
-                .style(theme::text_style::brand()),
-            Space::with_height(spacing::XS),
-            text("Private money for everyone")
-                .size(typography::BODY_LARGE)
-                .style(theme::text_style::secondary()),
-            Space::with_height(spacing::XXL),
-            button(
-                text("Get Started")
-                    .size(typography::BODY)
-                    .width(Length::Fill)
-                    .center(),
-            )
-            .padding([spacing::MD, spacing::XL])
-            .width(280)
-            .style(theme::button_style::primary_large)
-            .on_press(Message::StartOnboarding),
-            Space::with_height(Length::Fill),
-            text("Powered by Zcash")
-                .size(typography::CAPTION)
-                .style(theme::text_style::tertiary()),
-            Space::with_height(spacing::LG),
+        column![
+            text("Ikki").size(48.0),
+            text("Private money for everyone"),
+            button(text("Get Started")).on_press(Message::StartOnboarding),
         ]
-        .align_x(Alignment::Center)
-        .width(Length::Fill);
-
-        container(content)
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .center_x(Length::Fill)
-            .center_y(Length::Fill)
-            .style(theme::container_style::background)
-            .into()
+        .spacing(20)
+        .padding(50)
+        .into()
     }
 
     fn onboarding_choice(&self) -> Element<Message> {
-        let content = column![
-            text("Welcome to Ikki")
-                .size(typography::H1)
-                .style(theme::text_style::primary()),
-            Space::with_height(spacing::XS),
-            text("How would you like to set up your wallet?")
-                .size(typography::BODY)
-                .style(theme::text_style::secondary()),
-            Space::with_height(spacing::XXL),
-            button(
-                column![
-                    text("Create new wallet")
-                        .size(typography::BODY)
-                        .style(theme::text_style::primary()),
-                    Space::with_height(spacing::XXS),
-                    text("Generate a new seed phrase")
-                        .size(typography::BODY_SMALL)
-                        .style(theme::text_style::secondary()),
-                ]
-                .padding(spacing::MD)
-                .width(Length::Fill),
-            )
-            .width(320)
-            .style(theme::button_style::secondary)
-            .on_press(Message::OnboardingCreateNew),
-            Space::with_height(spacing::MD),
-            button(
-                column![
-                    text("Import existing wallet")
-                        .size(typography::BODY)
-                        .style(theme::text_style::primary()),
-                    Space::with_height(spacing::XXS),
-                    text("Use your 24-word seed phrase")
-                        .size(typography::BODY_SMALL)
-                        .style(theme::text_style::secondary()),
-                ]
-                .padding(spacing::MD)
-                .width(Length::Fill),
-            )
-            .width(320)
-            .style(theme::button_style::secondary)
-            .on_press(Message::OnboardingImportSeed),
+        column![
+            text("Welcome to Ikki"),
+            text("How would you like to set up your wallet?"),
+            button(text("Create new wallet")).on_press(Message::OnboardingCreateNew),
+            button(text("Import existing wallet")).on_press(Message::OnboardingImportSeed),
         ]
-        .align_x(Alignment::Center)
-        .padding(spacing::XXL);
-
-        container(content)
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .center_x(Length::Fill)
-            .center_y(Length::Fill)
-            .style(theme::container_style::background)
-            .into()
+        .spacing(20)
+        .padding(50)
+        .into()
     }
 
     fn onboarding_import(&self) -> Element<Message> {
         let error_text: Element<Message> = if let Some(error) = &self.onboarding.error {
-            text(error)
-                .size(typography::BODY_SMALL)
-                .style(theme::text_style::error())
-                .into()
+            text(error).into()
         } else {
             Space::with_height(0).into()
         };
 
-        let content = column![
-            text("Import your wallet")
-                .size(typography::H1)
-                .style(theme::text_style::primary()),
-            Space::with_height(spacing::XS),
-            text("Enter your 24-word seed phrase")
-                .size(typography::BODY)
-                .style(theme::text_style::secondary()),
-            Space::with_height(spacing::XL),
+        column![
+            text("Import your wallet"),
+            text("Enter your 24-word seed phrase"),
             iced::widget::text_input("Enter your seed phrase...", &self.onboarding.seed_input)
-                .padding(spacing::MD)
-                .size(typography::BODY)
-                .style(theme::input_style::large)
-                .width(400)
                 .on_input(Message::SeedInputChanged)
                 .on_submit(Message::SaveSeed),
-            Space::with_height(spacing::SM),
             error_text,
-            Space::with_height(spacing::LG),
             row![
-                button(text("Back").size(typography::BODY).center())
-                    .padding([spacing::SM, spacing::LG])
-                    .style(theme::button_style::ghost)
-                    .on_press(Message::StartOnboarding),
-                Space::with_width(spacing::MD),
-                button(text("Import").size(typography::BODY).center())
-                    .padding([spacing::SM, spacing::XL])
-                    .style(theme::button_style::primary)
-                    .on_press(Message::SaveSeed),
-            ],
+                button(text("Back")).on_press(Message::StartOnboarding),
+                button(text("Import")).on_press(Message::SaveSeed),
+            ]
+            .spacing(10),
         ]
-        .align_x(Alignment::Center)
-        .padding(spacing::XXL);
-
-        container(content)
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .center_x(Length::Fill)
-            .center_y(Length::Fill)
-            .style(theme::container_style::background)
-            .into()
+        .spacing(20)
+        .padding(50)
+        .into()
     }
 
     fn onboarding_create(&self) -> Element<Message> {
-        let seed_display: Element<Message> = if let Some(seed) = &self.onboarding.generated_seed {
-            container(
-                text(seed)
-                    .size(typography::BODY)
-                    .style(theme::text_style::primary()),
-            )
-            .padding(spacing::MD)
-            .width(400)
-            .style(theme::container_style::card)
-            .into()
-        } else {
-            crate::components::loading_spinner("Generating secure seed...")
+        let seed_display: Element<Message> = match &self.onboarding.generated_seed {
+            Some(seed) => text(seed.clone()).into(),
+            None => text("Generating...").into(),
         };
 
-        let content = column![
-            text("Your seed phrase")
-                .size(typography::H1)
-                .style(theme::text_style::primary()),
-            Space::with_height(spacing::XS),
-            text("Write down these 24 words and keep them safe")
-                .size(typography::BODY)
-                .style(theme::text_style::secondary()),
-            Space::with_height(spacing::XL),
+        column![
+            text("Your seed phrase"),
+            text("Write down these 24 words and keep them safe"),
             seed_display,
-            Space::with_height(spacing::MD),
-            container(
-                row![
-                    text("!")
-                        .size(typography::BODY)
-                        .style(theme::text_style::warning()),
-                    Space::with_width(spacing::SM),
-                    text("Never share your seed phrase. Anyone with these words can access your funds.")
-                        .size(typography::BODY_SMALL)
-                        .style(theme::text_style::warning()),
-                ]
-                .padding(spacing::MD),
-            )
-            .width(400)
-            .style(theme::container_style::warning_pill),
-            Space::with_height(spacing::XL),
+            text("Never share your seed phrase!"),
             row![
-                button(text("Back").size(typography::BODY).center())
-                    .padding([spacing::SM, spacing::LG])
-                    .style(theme::button_style::ghost)
-                    .on_press(Message::StartOnboarding),
-                Space::with_width(spacing::MD),
-                button(text("I've saved it").size(typography::BODY).center())
-                    .padding([spacing::SM, spacing::XL])
-                    .style(theme::button_style::primary)
-                    .on_press(Message::ConfirmSeedBackup),
-            ],
+                button(text("Back")).on_press(Message::StartOnboarding),
+                button(text("I've saved it")).on_press(Message::ConfirmSeedBackup),
+            ]
+            .spacing(10),
         ]
-        .align_x(Alignment::Center)
-        .padding(spacing::XXL);
-
-        container(content)
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .center_x(Length::Fill)
-            .center_y(Length::Fill)
-            .style(theme::container_style::background)
-            .into()
+        .spacing(20)
+        .padding(50)
+        .into()
     }
 
     fn onboarding_confirm(&self) -> Element<Message> {
-        let content = column![
-            text("Confirm your backup")
-                .size(typography::H1)
-                .style(theme::text_style::primary()),
-            Space::with_height(spacing::LG),
-            text("Please verify you've saved your seed phrase")
-                .size(typography::BODY)
-                .style(theme::text_style::secondary()),
-            Space::with_height(spacing::XL),
-            button(text("Continue").size(typography::BODY).center())
-                .padding([spacing::SM, spacing::XL])
-                .style(theme::button_style::primary)
-                .on_press(Message::ConfirmSeedBackup),
+        column![
+            text("Confirm your backup"),
+            text("Please verify you've saved your seed phrase"),
+            button(text("Continue")).on_press(Message::ConfirmSeedBackup),
         ]
-        .align_x(Alignment::Center)
-        .padding(spacing::XXL);
-
-        container(content)
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .center_x(Length::Fill)
-            .center_y(Length::Fill)
-            .style(theme::container_style::background)
-            .into()
+        .spacing(20)
+        .padding(50)
+        .into()
     }
 
     fn onboarding_complete(&self) -> Element<Message> {
-        let content = column![
-            text("*").size(64.0).style(theme::text_style::success()),
-            Space::with_height(spacing::LG),
-            text("You're all set!")
-                .size(typography::H1)
-                .style(theme::text_style::primary()),
-            Space::with_height(spacing::XS),
-            text("Your wallet is ready to use")
-                .size(typography::BODY)
-                .style(theme::text_style::secondary()),
-            Space::with_height(spacing::XXL),
-            button(text("Open Wallet").size(typography::BODY).center())
-                .padding([spacing::MD, spacing::XL])
-                .style(theme::button_style::primary)
-                .on_press(Message::OnboardingComplete),
+        column![
+            text("You're all set!"),
+            text("Your wallet is ready to use"),
+            button(text("Open Wallet")).on_press(Message::OnboardingComplete),
         ]
-        .align_x(Alignment::Center)
-        .padding(spacing::XXL);
-
-        container(content)
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .center_x(Length::Fill)
-            .center_y(Length::Fill)
-            .style(theme::container_style::background)
-            .into()
+        .spacing(20)
+        .padding(50)
+        .into()
     }
 
     fn load_settings(&mut self) {
