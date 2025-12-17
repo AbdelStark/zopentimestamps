@@ -9,7 +9,7 @@ documentation.workspace = true
 authors.workspace = true
 keywords.workspace = true
 categories.workspace = true
-publish = false
+publish = true
 description = "Core library for zOpenTimestamps - hashing, proof format, verification"
 
 [dependencies]
