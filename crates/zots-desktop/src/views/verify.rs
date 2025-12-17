@@ -167,20 +167,24 @@ pub fn view(app: &ZotsApp) -> Element<Message> {
         }
 
         content_col = content_col.push(Space::with_height(16));
-        content_col = content_col.push(row![
-            button(
-                row![
-                    text("📋").size(14),
-                    Space::with_width(8),
-                    text("Copy Compact").size(13),
-                ]
-                .align_y(Alignment::Center),
-            )
-            .padding([10, 16])
-            .style(theme::button_style::secondary)
-            .on_press(Message::CopyToClipboard(result.compact.clone())),
-            Space::with_width(12),
-            if !result.explorer_link.is_empty() {
+
+        let copy_btn = button(
+            row![
+                text("📋").size(14),
+                Space::with_width(8),
+                text("Copy Compact").size(13),
+            ]
+            .align_y(Alignment::Center),
+        )
+        .padding([10, 16])
+        .style(theme::button_style::secondary)
+        .on_press(Message::CopyToClipboard(result.compact.clone()));
+
+        let mut buttons_row = row![copy_btn];
+
+        if !result.explorer_link.is_empty() {
+            buttons_row = buttons_row.push(Space::with_width(12));
+            buttons_row = buttons_row.push(
                 button(
                     row![
                         text("🔗").size(14),
@@ -191,11 +195,11 @@ pub fn view(app: &ZotsApp) -> Element<Message> {
                 )
                 .padding([10, 16])
                 .style(theme::button_style::secondary)
-                .on_press(Message::OpenExplorer(result.explorer_link.clone()))
-            } else {
-                button(text("").size(0)).style(theme::button_style::secondary)
-            },
-        ]);
+                .on_press(Message::OpenExplorer(result.explorer_link.clone())),
+            );
+        }
+
+        content_col = content_col.push(buttons_row);
 
         let border_color = if result.valid {
             theme::colors::SUCCESS
