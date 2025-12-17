@@ -10,6 +10,7 @@
 //! - `encode` - Convert proof to compact embeddable format
 //! - `decode` - Convert compact format back to JSON
 //! - `wallet` - Wallet management (sync, balance, address)
+//! - `nostr` - Publish/fetch proofs via Nostr protocol
 //! - `tui` - Launch interactive terminal UI
 //!
 //! ## Usage
@@ -20,6 +21,12 @@
 //!
 //! # Verify a proof
 //! zots verify document.pdf.zots
+//!
+//! # Publish proof to Nostr
+//! zots nostr publish document.pdf.zots
+//!
+//! # Fetch proof from Nostr
+//! zots nostr fetch note1...
 //!
 //! # Launch TUI
 //! zots tui
@@ -35,11 +42,14 @@ mod output;
 mod tui;
 
 use clap::Parser;
-use cli::{Cli, Commands, LogLevelArg, WalletCommands};
+use cli::{Cli, Commands, LogLevelArg, NostrCommands, WalletCommands};
 use tracing_subscriber::filter::LevelFilter;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    // Install rustls crypto provider before any TLS connections
+    let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
+
     dotenvy::dotenv().ok();
 
     let cli = Cli::parse();
@@ -65,6 +75,12 @@ async fn main() -> anyhow::Result<()> {
             WalletCommands::Balance => commands::wallet::balance().await,
             WalletCommands::Address => commands::wallet::address().await,
             WalletCommands::Info => commands::wallet::info().await,
+        },
+        Commands::Nostr { command } => match command {
+            NostrCommands::Publish { proof } => commands::nostr::publish(proof).await,
+            NostrCommands::Fetch { event_id, output } => {
+                commands::nostr::fetch(event_id, output).await
+            }
         },
         Commands::Tui => tui::run().await,
     }

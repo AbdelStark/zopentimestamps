@@ -26,6 +26,7 @@ Timestamp any file or hash on the Zcash blockchain to create cryptographic proof
 - [Quick Start](#quick-start)
 - [Configuration](#configuration)
 - [Usage](#usage)
+  - [Nostr Integration](#nostr-integration)
 - [Proof Formats](#proof-formats)
 - [How It Works](#how-it-works)
 - [Architecture](#architecture)
@@ -42,6 +43,7 @@ Timestamp any file or hash on the Zcash blockchain to create cryptographic proof
 - **Shielded transactions** - Privacy-preserving using Orchard/Sapling protocols
 - **Embeddable proofs** - Compact CBOR+Base64 format for photos, screenshots, git commits
 - **Human-readable format** - JSON proof files for transparency and interoperability
+- **Nostr integration** - Publish and share proofs via the Nostr protocol
 
 ## Installation
 
@@ -121,6 +123,22 @@ Environment is read from a `.env` file or the current shell. Defaults are safe f
 | `ZOTS_LIGHTWALLETD` | No | `https://testnet.zec.rocks:443` | lightwalletd endpoint |
 | `ZOTS_NETWORK` | No | `testnet` | `testnet` only; mainnet intentionally discouraged |
 | `ZOTS_DATA_DIR` | No | `~/.zopentimestamps` | Wallet DB and proving parameter cache |
+
+### Nostr Configuration (Optional)
+
+For sharing proofs via the Nostr protocol:
+
+| Variable | Required | Default | Purpose |
+|----------|----------|---------|---------|
+| `ZOTS_NOSTR_NSEC` | For Nostr | - | Your Nostr secret key (`nsec1...` or hex) |
+| `ZOTS_NOSTR_RELAYS` | For Nostr | - | Comma-separated relay URLs |
+
+Example `.env` configuration for Nostr:
+
+```bash
+ZOTS_NOSTR_NSEC="nsec1..."
+ZOTS_NOSTR_RELAYS="wss://relay.damus.io,wss://nos.lol,wss://relay.nostr.band"
+```
 
 Operational notes:
 
@@ -218,6 +236,36 @@ zots tui
 - `V` - Verify screen
 - `W` - Wallet screen
 - `Q` / `Esc` - Quit/Back
+
+### Nostr Integration
+
+Share timestamp proofs via the decentralized Nostr protocol. Proofs are published with human-readable descriptions and machine-parseable compact format.
+
+| Publishing proof to Nostr | Fetching proof from Nostr |
+| --- | --- |
+| ![Nostr publish screenshot](docs/misc/zots-nostr-demo-2.png) | ![Nostr fetch screenshot](docs/misc/zots-nostr-demo-3.png) |
+
+| Proof viewed in Nostr client (Iris) |
+| --- |
+| ![Nostr client view](docs/misc/zots-nostr-demo-1.png) |
+
+```bash
+# Publish a proof to Nostr relays
+zots nostr publish document.pdf.zots
+
+# Fetch a proof from Nostr by event ID
+zots nostr fetch note1abc123...
+
+# Fetch and save to file
+zots nostr fetch note1abc123... -o proof.zots
+```
+
+**Event Format:**
+
+When published, proofs are stored as Nostr events containing:
+- Human-readable description with hash, attestations, block info, and explorer links
+- `zots-proof` tag with the compact CBOR+Base64 proof (`zots1...`)
+- `zots-hash` tag for discoverability by hash
 
 ### Logging
 

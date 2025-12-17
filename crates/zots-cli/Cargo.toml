@@ -41,3 +41,7 @@ tokio.workspace = true
 # Other
 anyhow.workspace = true
 chrono.workspace = true
+
+# Nostr
+nostr-sdk.workspace = true
+rustls.workspace = true

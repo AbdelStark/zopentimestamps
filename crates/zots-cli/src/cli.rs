@@ -103,6 +103,12 @@ pub enum Commands {
         command: WalletCommands,
     },
 
+    /// Nostr protocol integration for proof sharing
+    Nostr {
+        #[command(subcommand)]
+        command: NostrCommands,
+    },
+
     /// Launch interactive TUI mode
     Tui,
 }
@@ -136,6 +142,25 @@ pub enum WalletCommands {
 
     /// Show wallet info (height, balance, address)
     Info,
+}
+
+#[derive(Subcommand)]
+pub enum NostrCommands {
+    /// Publish a timestamp proof to Nostr relays
+    Publish {
+        /// Proof file (.zots) to publish
+        proof: PathBuf,
+    },
+
+    /// Fetch a timestamp proof from a Nostr event
+    Fetch {
+        /// Nostr event ID (note1... bech32 or hex)
+        event_id: String,
+
+        /// Output file path (default: print to stdout)
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+    },
 }
 
 /// Log level option for CLI

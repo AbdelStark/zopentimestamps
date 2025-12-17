@@ -8,10 +8,12 @@
 //! - [`encode`] - Convert proofs to compact format
 //! - [`decode`] - Convert compact format to JSON
 //! - [`wallet`] - Wallet management operations
+//! - [`nostr`] - Nostr protocol integration for proof sharing
 
 pub mod decode;
 pub mod encode;
 pub mod info;
+pub mod nostr;
 pub mod stamp;
 pub mod verify;
 pub mod wallet;
