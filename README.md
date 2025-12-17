@@ -44,6 +44,7 @@ Timestamp any file or hash on the Zcash blockchain to create cryptographic proof
 - **Embeddable proofs** - Compact CBOR+Base64 format for photos, screenshots, git commits
 - **Human-readable format** - JSON proof files for transparency and interoperability
 - **Nostr integration** - Publish and share proofs via the Nostr protocol
+- **Desktop GUI** - Native desktop application built with Rust/iced for a smooth graphical experience
 
 ## Installation
 
@@ -58,6 +59,15 @@ cd zopentimestamps
 cargo build --release
 
 # Binary location: target/release/zots
+```
+
+### Build Desktop App
+
+```bash
+# Build the desktop GUI application
+cargo build -p zots-desktop --release
+
+# Binary location: target/release/zots-desktop
 ```
 
 ### Verify Installation
@@ -237,6 +247,25 @@ zots tui
 - `W` - Wallet screen
 - `Q` / `Esc` - Quit/Back
 
+### Desktop Application
+
+A native GUI application built with iced for a graphical experience.
+
+```bash
+# Launch the desktop app
+./target/release/zots-desktop
+```
+
+**Features:**
+- **Home** - Dashboard with wallet balance, block height, and quick actions
+- **Stamp** - Create timestamps by selecting files or entering hashes
+- **Verify** - Verify proof files against the blockchain
+- **History** - Browse previously created proofs
+- **Wallet** - View balance and sync wallet
+- **Settings** - Configure lightwalletd endpoint and other options
+
+The desktop app uses the same environment configuration as the CLI (`.env` file or environment variables).
+
 ### Nostr Integration
 
 Share timestamp proofs via the decentralized Nostr protocol. Proofs are published with human-readable descriptions and machine-parseable compact format.
@@ -392,13 +421,22 @@ zopentimestamps/
 │   │   │   └── memo.rs     # Memo encoding
 │   │   └── Cargo.toml
 │   │
-│   └── zots-cli/           # CLI application
+│   ├── zots-cli/           # CLI application
+│   │   ├── src/
+│   │   │   ├── main.rs     # Entry point
+│   │   │   ├── cli.rs      # Argument parsing
+│   │   │   ├── commands/   # Command implementations
+│   │   │   ├── output.rs   # Terminal output helpers
+│   │   │   └── tui/        # Terminal UI
+│   │   └── Cargo.toml
+│   │
+│   └── zots-desktop/       # Desktop GUI application
 │       ├── src/
 │       │   ├── main.rs     # Entry point
-│       │   ├── cli.rs      # Argument parsing
-│       │   ├── commands/   # Command implementations
-│       │   ├── output.rs   # Terminal output helpers
-│       │   └── tui/        # Terminal UI
+│       │   ├── app.rs      # Application state and logic
+│       │   ├── message.rs  # UI messages and events
+│       │   ├── theme.rs    # Styling and theming
+│       │   └── views/      # Screen implementations
 │       └── Cargo.toml
 │
 └── docs/                   # Additional documentation
@@ -411,6 +449,7 @@ zopentimestamps/
 | `zots-core` | Hash functions, proof format, serialization |
 | `zots-zcash` | Wallet, transactions, lightwalletd integration |
 | `zots-cli` | CLI commands, TUI, user interaction |
+| `zots-desktop` | Native GUI application using iced framework |
 
 ## License
 
