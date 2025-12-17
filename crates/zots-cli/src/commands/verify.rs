@@ -10,11 +10,13 @@
 
 use crate::output::*;
 use std::path::PathBuf;
+use tracing::{debug, info};
 use zots_core::{TimestampProof, hash_file_with, hash_to_hex};
 use zots_zcash::{ZcashConfig, ZotsWallet};
 
 pub async fn run(proof_path: PathBuf, file: Option<PathBuf>) -> anyhow::Result<()> {
     print_header("Verifying Timestamp");
+    info!("Starting verification for proof {}", proof_path.display());
 
     // Load proof
     let proof = TimestampProof::load(&proof_path)?;
@@ -28,6 +30,11 @@ pub async fn run(proof_path: PathBuf, file: Option<PathBuf>) -> anyhow::Result<(
     // Verify against original file if provided
     if let Some(file_path) = file {
         print_status("Verifying hash against original file...");
+        info!(
+            "Hashing original file {} with {}",
+            file_path.display(),
+            algorithm.name()
+        );
         let file_hash = hash_file_with(&file_path, algorithm)?;
 
         if file_hash == proof_hash_bytes {
@@ -52,6 +59,11 @@ pub async fn run(proof_path: PathBuf, file: Option<PathBuf>) -> anyhow::Result<(
     // Verify against the blockchain by fetching the transaction
     // and checking the memo contains the expected hash
     print_status("Verifying against blockchain...");
+    info!(
+        "Fetching transaction {} on {} for verification",
+        att.txid_hex(),
+        att.network
+    );
 
     let config = ZcashConfig::from_env()?;
     let mut wallet = ZotsWallet::new(config).await?;
@@ -76,6 +88,7 @@ pub async fn run(proof_path: PathBuf, file: Option<PathBuf>) -> anyhow::Result<(
         println!();
         print_error("VERIFICATION FAILED");
         if let Some(error) = result.error {
+            debug!("Verification error detail: {}", error);
             print_info("Reason", &error);
         }
         print_info("TXID", att.txid_hex());

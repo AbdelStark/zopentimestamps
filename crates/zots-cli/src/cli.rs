@@ -24,6 +24,10 @@ use zots_core::HashAlgorithm;
 )]
 #[command(propagate_version = true)]
 pub struct Cli {
+    /// Log level for diagnostic output
+    #[arg(long, value_enum, default_value_t = LogLevelArg::Info, global = true, value_name = "LEVEL")]
+    pub log_level: LogLevelArg,
+
     #[command(subcommand)]
     pub command: Commands,
 }
@@ -124,4 +128,14 @@ pub enum WalletCommands {
 
     /// Show wallet info (height, balance, address)
     Info,
+}
+
+/// Log level option for CLI
+#[derive(Copy, Clone, Debug, PartialEq, Eq, ValueEnum)]
+pub enum LogLevelArg {
+    Error,
+    Warn,
+    Info,
+    Debug,
+    Trace,
 }

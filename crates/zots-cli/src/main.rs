@@ -35,13 +35,15 @@ mod output;
 mod tui;
 
 use clap::Parser;
-use cli::{Cli, Commands, WalletCommands};
+use cli::{Cli, Commands, LogLevelArg, WalletCommands};
+use tracing_subscriber::filter::LevelFilter;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     dotenvy::dotenv().ok();
 
     let cli = Cli::parse();
+    init_logging(cli.log_level);
 
     match cli.command {
         Commands::Stamp {
@@ -63,4 +65,22 @@ async fn main() -> anyhow::Result<()> {
         },
         Commands::Tui => tui::run().await,
     }
+}
+
+/// Initialize global logging with the desired level.
+fn init_logging(level: LogLevelArg) {
+    let level_filter = match level {
+        LogLevelArg::Error => LevelFilter::ERROR,
+        LogLevelArg::Warn => LevelFilter::WARN,
+        LogLevelArg::Info => LevelFilter::INFO,
+        LogLevelArg::Debug => LevelFilter::DEBUG,
+        LogLevelArg::Trace => LevelFilter::TRACE,
+    };
+
+    // Ignore errors if already initialized (e.g., in tests)
+    let _ = tracing_subscriber::fmt()
+        .with_max_level(level_filter)
+        .with_target(false)
+        .with_writer(std::io::stderr)
+        .try_init();
 }

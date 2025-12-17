@@ -8,6 +8,7 @@ use std::collections::HashMap;
 use bip0039::{English, Mnemonic};
 use rand_core::OsRng;
 use tonic::transport::{Channel, ClientTlsConfig};
+use tracing::{debug, info, warn};
 use zcash_client_backend::data_api::wallet::input_selection::GreedyInputSelector;
 use zcash_client_backend::data_api::wallet::{
     ConfirmationsPolicy, SpendingKeys, create_proposed_transactions, propose_shielding,
@@ -345,6 +346,10 @@ impl ZotsWallet {
         let account_id = accounts
             .first()
             .ok_or_else(|| anyhow::anyhow!("No account found"))?;
+        info!(
+            "Creating timestamp transaction for account {:?}",
+            account_id
+        );
 
         // Check balance
         let summary = self.db.get_wallet_summary(ConfirmationsPolicy::MIN)?;
@@ -362,9 +367,14 @@ impl ZotsWallet {
 
         let total_shielded = orchard_balance + sapling_balance;
         let min_required = 20000u64; // ZIP-317 minimum fee
+        debug!(
+            transparent_balance,
+            orchard_balance, sapling_balance, total_shielded, "Wallet balance snapshot (zatoshis)"
+        );
 
         // Need shielded funds to send memo
         if total_shielded < min_required {
+            warn!("Insufficient shielded funds for timestamp transaction");
             if transparent_balance >= min_required {
                 return Err(anyhow::anyhow!(
                     "Your funds are in the transparent pool.\n\
@@ -383,13 +393,16 @@ impl ZotsWallet {
             .ok_or_else(|| anyhow::anyhow!("No address found"))?
             .address()
             .clone();
+        debug!("Using internal address {:?} for self-send", address);
 
         // Create memo with timestamp data
+        debug!("Creating timestamp memo payload");
         let memo_data = create_timestamp_memo(hash);
         let memo = MemoBytes::from_bytes(&memo_data)
             .map_err(|_| anyhow::anyhow!("Failed to create memo"))?;
 
         // Derive spending key
+        debug!("Deriving unified spending key for transaction");
         let usk = UnifiedSpendingKey::from_seed(&TEST_NETWORK, &self.seed, AccountId::ZERO)
             .map_err(|e| anyhow::anyhow!("Failed to derive spending key: {:?}", e))?;
 
@@ -410,10 +423,12 @@ impl ZotsWallet {
             ShieldedProtocol::Orchard,
         )
         .map_err(|e| anyhow::anyhow!("Failed to create transaction proposal: {:?}", e))?;
+        debug!("Proposal created for self-send with memo");
 
         // Load bundled Sapling prover (includes proving parameters)
         let prover = LocalTxProver::bundled();
         let spending_keys = SpendingKeys::from_unified_spending_key(usk);
+        debug!("Loaded proving parameters and spending keys");
 
         // Build the transaction using helper to handle complex type inference
         let txids = build_and_sign_transaction(
@@ -423,9 +438,11 @@ impl ZotsWallet {
             &spending_keys,
             &proposal,
         )?;
+        debug!("Transaction built and signed");
 
         // NonEmpty guarantees at least one element
         let txid = *txids.first();
+        info!("Timestamp transaction built with txid {}", txid);
 
         // Get the transaction from the database
         let tx = self
@@ -459,6 +476,10 @@ impl ZotsWallet {
                 send_response.error_message
             ));
         }
+        debug!(
+            "Broadcast response accepted (code {}): {}",
+            send_response.error_code, send_response.error_message
+        );
 
         // Return the transaction ID (use Display formatting which reverses bytes for user display)
         let txid_bytes: [u8; 32] = txid.into();
@@ -479,10 +500,15 @@ impl ZotsWallet {
         max_blocks: u32,
     ) -> anyhow::Result<ConfirmationResult> {
         let start_height = self.get_block_height().await?;
+        info!(
+            "Waiting for confirmation of txid {} starting at height {}",
+            txid, start_height
+        );
 
         for _ in 0..max_blocks {
             self.sync().await?;
             let current_height = self.get_block_height().await?;
+            debug!(current_height, start_height, "Synced height while waiting");
 
             if current_height > start_height {
                 // Use wall-clock time here; lightwalletd does not return block metadata
@@ -523,6 +549,13 @@ impl ZotsWallet {
         expected_hash: &[u8; 32],
         block_height: Option<u32>,
     ) -> anyhow::Result<VerificationResult> {
+        info!("Verifying timestamp transaction");
+        debug!(
+            block_height,
+            "Fetching transaction with expected memo hash ({} bytes)",
+            expected_hash.len()
+        );
+
         // Fetch transaction from lightwalletd
         // Note: lightwalletd expects txid in internal byte order (not display order)
         let tx_filter = TxFilter {
@@ -538,6 +571,7 @@ impl ZotsWallet {
             .map_err(|e| anyhow::anyhow!("Failed to fetch transaction: {:?}", e))?;
 
         let raw_tx = response.into_inner();
+        debug!("Fetched raw transaction bytes: {}", raw_tx.data.len());
         if raw_tx.data.is_empty() {
             return Ok(VerificationResult {
                 valid: false,
@@ -549,6 +583,7 @@ impl ZotsWallet {
         // Parse the raw transaction
         let tx = Transaction::read(&raw_tx.data[..], BranchId::Nu6)
             .map_err(|e| anyhow::anyhow!("Failed to parse transaction: {:?}", e))?;
+        debug!("Transaction parsed; scanning outputs for memo");
 
         // Get the viewing key for decryption
         let usk = UnifiedSpendingKey::from_seed(&TEST_NETWORK, &self.seed, AccountId::ZERO)
@@ -575,6 +610,7 @@ impl ZotsWallet {
             if let Some(hash) = parse_timestamp_memo(output.memo().as_slice())
                 && hash == *expected_hash
             {
+                info!("Found matching memo in Sapling output");
                 return Ok(VerificationResult {
                     valid: true,
                     memo_hash: Some(hash),
@@ -588,6 +624,7 @@ impl ZotsWallet {
             if let Some(hash) = parse_timestamp_memo(output.memo().as_slice())
                 && hash == *expected_hash
             {
+                info!("Found matching memo in Orchard output");
                 return Ok(VerificationResult {
                     valid: true,
                     memo_hash: Some(hash),
@@ -598,6 +635,7 @@ impl ZotsWallet {
 
         // If we have decrypted outputs but none match, verification failed
         let total_outputs = decrypted.sapling_outputs().len() + decrypted.orchard_outputs().len();
+        debug!(total_outputs, "No matching memo found in decrypted outputs");
 
         if total_outputs > 0 {
             Ok(VerificationResult {

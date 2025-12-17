@@ -142,6 +142,9 @@ zots stamp document.pdf -o my-proof.zots
 # Use BLAKE3 instead of SHA-256
 zots stamp --hash-algorithm blake3 document.pdf
 
+# Enable verbose logging
+zots stamp --log-level debug document.pdf
+
 # Don't wait for confirmation (creates pending proof)
 zots stamp document.pdf --no-wait
 ```
@@ -167,6 +170,9 @@ zots verify document.pdf.zots
 
 # Also verify file hash matches
 zots verify document.pdf.zots -f document.pdf
+
+# Verbose verification logs
+zots verify --log-level debug document.pdf.zots
 ```
 
 Verification decrypts the memo using your wallet's viewing keys. Use the same
@@ -212,6 +218,11 @@ zots tui
 - `V` - Verify screen
 - `W` - Wallet screen
 - `Q` / `Esc` - Quit/Back
+
+### Logging
+
+- Default log level is `info`
+- Use `--log-level debug` on any command for detailed progress (memo creation, transaction build, RPC calls)
 
 ## Proof Formats
 

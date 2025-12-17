@@ -16,6 +16,7 @@
 //! - **Hash**: The 32-byte hash being timestamped
 //! - **Padding**: Zero-padded to 512 bytes total
 
+use tracing::debug;
 use zots_core::proof::ZOTS_MAGIC;
 
 /// Create a memo field containing timestamp data
@@ -23,6 +24,7 @@ use zots_core::proof::ZOTS_MAGIC;
 /// Format: ZOTS_MAGIC (8 bytes) + hash (32 bytes) = 40 bytes
 /// Padded to 512 bytes for Zcash memo field
 pub fn create_timestamp_memo(hash: &[u8; 32]) -> Vec<u8> {
+    debug!("Creating timestamp memo with 32-byte hash digest");
     let mut data = Vec::with_capacity(512);
     data.extend_from_slice(&ZOTS_MAGIC);
     data.extend_from_slice(hash);
@@ -37,6 +39,7 @@ pub fn create_timestamp_memo(hash: &[u8; 32]) -> Vec<u8> {
 ///
 /// Returns None if memo doesn't have valid ZOTS magic header
 pub fn parse_timestamp_memo(memo: &[u8]) -> Option<[u8; 32]> {
+    debug!("Attempting to parse timestamp memo");
     if memo.len() < 40 {
         return None;
     }

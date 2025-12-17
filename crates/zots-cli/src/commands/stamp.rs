@@ -11,6 +11,7 @@
 use crate::output::*;
 use indicatif::{ProgressBar, ProgressStyle};
 use std::path::PathBuf;
+use tracing::{debug, info};
 use zots_core::{
     HashAlgorithm, TimestampProof, ZcashAttestation, hash_file_with, hash_from_hex_with,
     hash_to_hex,
@@ -24,9 +25,13 @@ pub async fn run(
     hash_algorithm: HashAlgorithm,
     no_wait: bool,
 ) -> anyhow::Result<()> {
+    info!("Starting stamp operation");
+    debug!("Selected hash algorithm: {}", hash_algorithm.name());
+
     // Determine hash to timestamp
     let (hash_bytes, output_path) = if let Some(file_path) = file {
         print_header("Timestamping File");
+        info!("Hashing file {}", file_path.display());
 
         let pb = ProgressBar::new_spinner();
         pb.set_style(
@@ -38,6 +43,7 @@ pub async fn run(
 
         let hash = hash_file_with(&file_path, hash_algorithm)?;
         pb.finish_with_message("Hashing complete");
+        debug!("Computed hash: {}", hash_to_hex(&hash));
 
         let output = output.unwrap_or_else(|| {
             let mut p = file_path.clone();
@@ -55,6 +61,7 @@ pub async fn run(
         (hash, output)
     } else if let Some(hex) = hash {
         print_header("Timestamping Hash");
+        info!("Using provided hash input");
 
         let hash = hash_from_hex_with(&hex, hash_algorithm)?;
         let output = output.unwrap_or_else(|| PathBuf::from(format!("{}.zots", &hex[..16])));
@@ -71,6 +78,7 @@ pub async fn run(
     // Initialize wallet
     let config = ZcashConfig::from_env()?;
     let mut wallet = ZotsWallet::new(config.clone()).await?;
+    info!("Initializing wallet");
     wallet.init_account().await?;
 
     // Sync wallet
@@ -81,12 +89,14 @@ pub async fn run(
             .unwrap(),
     );
     pb.set_message("Syncing wallet...");
+    debug!("Syncing wallet with lightwalletd");
     wallet.sync().await?;
     pb.finish_with_message("Wallet synced");
 
     // Create and broadcast transaction
     let pb = ProgressBar::new_spinner();
     pb.set_message("Creating transaction...");
+    info!("Creating timestamp transaction");
     let tx_result = wallet.create_timestamp_tx(&hash_bytes).await?;
     pb.finish_with_message("Transaction broadcast");
 
