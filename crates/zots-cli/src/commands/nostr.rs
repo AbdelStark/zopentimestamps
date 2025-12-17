@@ -105,10 +105,7 @@ fn proof_description(proof: &TimestampProof) -> String {
 
         for (i, att) in proof.attestations.iter().enumerate() {
             let timestamp = att.timestamp();
-            desc.push_str(&format!(
-                "🔗 Attestation #{}\n",
-                i + 1
-            ));
+            desc.push_str(&format!("🔗 Attestation #{}\n", i + 1));
             desc.push_str(&format!("   Network: {} (Zcash)\n", att.network));
             desc.push_str(&format!("   Block: {}\n", att.block_height));
             desc.push_str(&format!(
@@ -203,7 +200,10 @@ pub async fn publish(proof_path: PathBuf) -> anyhow::Result<()> {
     }
 
     println!();
-    print_info("Fetch with", &format!("zots nostr fetch {}", output.id().to_bech32()?));
+    print_info(
+        "Fetch with",
+        &format!("zots nostr fetch {}", output.id().to_bech32()?),
+    );
 
     // Disconnect
     client.disconnect().await;
@@ -248,9 +248,7 @@ pub async fn fetch(event_id: String, output: Option<PathBuf>) -> anyhow::Result<
 
     // Fetch the event
     print_status("Fetching event...");
-    let events = client
-        .fetch_events(filter, Duration::from_secs(10))
-        .await?;
+    let events = client.fetch_events(filter, Duration::from_secs(10)).await?;
 
     if events.is_empty() {
         print_error("Event not found on any connected relay");
@@ -296,7 +294,10 @@ pub async fn fetch(event_id: String, output: Option<PathBuf>) -> anyhow::Result<
             &format!("{} block {}", att.network, att.block_height),
         );
         print_info("  TX", &att.txid);
-        print_info("  Time", &att.timestamp().format("%Y-%m-%d %H:%M:%S UTC").to_string());
+        print_info(
+            "  Time",
+            &att.timestamp().format("%Y-%m-%d %H:%M:%S UTC").to_string(),
+        );
     }
 
     // Save or display
