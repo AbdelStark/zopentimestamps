@@ -702,7 +702,6 @@ impl ZotsWallet {
     pub fn get_recent_transactions(&self, limit: usize) -> anyhow::Result<Vec<TransactionRecord>> {
         use rusqlite::Connection;
 
-        let mut transactions = Vec::new();
         let db_path = self.config.wallet_db_path();
 
         // Open a read-only connection to query transaction history
@@ -711,28 +710,34 @@ impl ZotsWallet {
             rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY,
         )?;
 
-        // Query for sent transactions
+        // Use the v_transactions view which already calculates everything we need
         let mut stmt = conn.prepare(
-            "SELECT DISTINCT
-                t.txid,
-                t.block,
-                COALESCE(sn.value, 0) as sent_value
-            FROM transactions t
-            LEFT JOIN sent_notes sn ON t.id_tx = sn.tx
-            WHERE sn.value > 0
-            ORDER BY t.block DESC
+            "SELECT
+                txid,
+                mined_height,
+                account_balance_delta,
+                block_time,
+                sent_note_count,
+                is_shielding
+            FROM v_transactions
+            WHERE mined_height IS NOT NULL
+            ORDER BY mined_height DESC
             LIMIT ?"
         )?;
 
         let rows = stmt.query_map([limit as i64], |row| {
             let txid_bytes: Vec<u8> = row.get(0)?;
-            let block: Option<u32> = row.get(1)?;
-            let sent_value: i64 = row.get(2)?;
-            Ok((txid_bytes, block, sent_value))
+            let _mined_height: Option<u32> = row.get(1)?;
+            let balance_delta: i64 = row.get(2)?;
+            let block_time: Option<u32> = row.get(3)?;
+            let sent_note_count: i64 = row.get(4)?;
+            let is_shielding: bool = row.get(5)?;
+            Ok((txid_bytes, balance_delta, block_time, sent_note_count, is_shielding))
         })?;
 
+        let mut transactions = Vec::new();
         for row_result in rows {
-            if let Ok((txid_bytes, block, sent_value)) = row_result {
+            if let Ok((txid_bytes, balance_delta, block_time, sent_note_count, is_shielding)) = row_result {
                 let mut txid_arr = [0u8; 32];
                 if txid_bytes.len() == 32 {
                     txid_arr.copy_from_slice(&txid_bytes);
@@ -741,122 +746,23 @@ impl ZotsWallet {
                 // Manual hex encoding
                 let txid: String = txid_arr.iter().map(|b| format!("{:02x}", b)).collect();
 
-                // Estimate timestamp from block height (Zcash ~75 second blocks)
-                let timestamp = block.map(|b| {
-                    let genesis_time: u64 = 1477612800;
-                    genesis_time + (b as u64 * 75)
-                }).unwrap_or(0);
+                let timestamp = block_time.map(|t| t as u64).unwrap_or(0);
+
+                // Determine if this is a sent transaction:
+                // - sent_note_count > 0 means we created outputs for others
+                // - is_shielding means we're shielding our own funds (not really "sent")
+                // - balance_delta < 0 means we spent more than we received (sent or fee)
+                let is_sent = sent_note_count > 0 && !is_shielding;
 
                 transactions.push(TransactionRecord {
                     txid,
-                    amount: -sent_value, // Negative for sent
+                    amount: balance_delta,
                     timestamp,
-                    is_sent: true,
+                    is_sent,
                     memo: None,
                 });
             }
         }
-
-        // Query for received notes (Sapling)
-        let mut sapling_stmt = conn.prepare(
-            "SELECT DISTINCT
-                t.txid,
-                t.block,
-                rn.value as recv_value
-            FROM transactions t
-            INNER JOIN sapling_received_notes rn ON t.id_tx = rn.tx
-            WHERE rn.value > 0
-            ORDER BY t.block DESC
-            LIMIT ?"
-        )?;
-
-        let sapling_rows = sapling_stmt.query_map([limit as i64], |row| {
-            let txid_bytes: Vec<u8> = row.get(0)?;
-            let block: Option<u32> = row.get(1)?;
-            let recv_value: i64 = row.get(2)?;
-            Ok((txid_bytes, block, recv_value))
-        })?;
-
-        for row_result in sapling_rows {
-            if let Ok((txid_bytes, block, recv_value)) = row_result {
-                let mut txid_arr = [0u8; 32];
-                if txid_bytes.len() == 32 {
-                    txid_arr.copy_from_slice(&txid_bytes);
-                    txid_arr.reverse();
-                }
-                let txid: String = txid_arr.iter().map(|b| format!("{:02x}", b)).collect();
-
-                // Skip if we already have this transaction
-                if transactions.iter().any(|t| t.txid == txid) {
-                    continue;
-                }
-
-                let timestamp = block.map(|b| {
-                    let genesis_time: u64 = 1477612800;
-                    genesis_time + (b as u64 * 75)
-                }).unwrap_or(0);
-
-                transactions.push(TransactionRecord {
-                    txid,
-                    amount: recv_value,
-                    timestamp,
-                    is_sent: false,
-                    memo: None,
-                });
-            }
-        }
-
-        // Query for received notes (Orchard)
-        let mut orchard_stmt = conn.prepare(
-            "SELECT DISTINCT
-                t.txid,
-                t.block,
-                orn.value as recv_value
-            FROM transactions t
-            INNER JOIN orchard_received_notes orn ON t.id_tx = orn.tx
-            WHERE orn.value > 0
-            ORDER BY t.block DESC
-            LIMIT ?"
-        )?;
-
-        let orchard_rows = orchard_stmt.query_map([limit as i64], |row| {
-            let txid_bytes: Vec<u8> = row.get(0)?;
-            let block: Option<u32> = row.get(1)?;
-            let recv_value: i64 = row.get(2)?;
-            Ok((txid_bytes, block, recv_value))
-        })?;
-
-        for row_result in orchard_rows {
-            if let Ok((txid_bytes, block, recv_value)) = row_result {
-                let mut txid_arr = [0u8; 32];
-                if txid_bytes.len() == 32 {
-                    txid_arr.copy_from_slice(&txid_bytes);
-                    txid_arr.reverse();
-                }
-                let txid: String = txid_arr.iter().map(|b| format!("{:02x}", b)).collect();
-
-                if transactions.iter().any(|t| t.txid == txid) {
-                    continue;
-                }
-
-                let timestamp = block.map(|b| {
-                    let genesis_time: u64 = 1477612800;
-                    genesis_time + (b as u64 * 75)
-                }).unwrap_or(0);
-
-                transactions.push(TransactionRecord {
-                    txid,
-                    amount: recv_value,
-                    timestamp,
-                    is_sent: false,
-                    memo: None,
-                });
-            }
-        }
-
-        // Sort by timestamp descending
-        transactions.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
-        transactions.truncate(limit);
 
         Ok(transactions)
     }
