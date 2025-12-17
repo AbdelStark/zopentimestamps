@@ -2,7 +2,7 @@
 
 use crate::app::ZotsApp;
 use crate::message::Message;
-use crate::theme;
+use crate::theme::{self, colors};
 use iced::widget::{button, column, container, row, text, text_input, Space};
 use iced::{Alignment, Element, Length};
 
@@ -91,45 +91,85 @@ pub fn view(app: &ZotsApp) -> Element<Message> {
     let result_section = if let Some(result) = &app.stamp_result {
         let block_str = result.block_height.to_string();
         let output_str = result.output_path.display().to_string();
-        container(
-            column![
+        let (icon, title, status_color) = if result.pending {
+            ("⏳", "Transaction Broadcast!", colors::WARNING)
+        } else {
+            ("✓", "Timestamp Confirmed!", colors::SUCCESS)
+        };
+        let status_text = if result.pending {
+            "Waiting for block confirmation. The proof file has been saved."
+        } else {
+            ""
+        };
+
+        let mut content_col = column![
+            row![
+                text(icon).size(20).color(status_color),
+                Space::with_width(12),
+                text(title).size(16).color(status_color),
+            ]
+            .align_y(Alignment::Center),
+        ];
+
+        if result.pending {
+            content_col = content_col.push(Space::with_height(8));
+            content_col = content_col.push(
+                text(status_text)
+                    .size(12)
+                    .style(theme::text_style::muted()),
+            );
+        }
+
+        content_col = content_col.push(Space::with_height(16));
+        content_col = content_col.push(info_row("Hash", result.hash.clone(), true));
+        content_col = content_col.push(info_row(
+            "Algorithm",
+            result.algorithm.name().to_string(),
+            false,
+        ));
+        content_col = content_col.push(info_row("Transaction", result.txid.clone(), true));
+        content_col = content_col.push(info_row("Block", block_str, false));
+        content_col = content_col.push(info_row("Saved to", output_str, false));
+        content_col = content_col.push(Space::with_height(16));
+        content_col = content_col.push(row![
+            button(
                 row![
-                    text("✓").size(20).style(theme::text_style::success()),
-                    Space::with_width(12),
-                    text("Timestamp Created Successfully!")
-                        .size(16)
-                        .style(theme::text_style::success()),
+                    text("📋").size(14),
+                    Space::with_width(8),
+                    text("Copy Proof").size(13),
                 ]
                 .align_y(Alignment::Center),
-                Space::with_height(16),
-                info_row("Hash", result.hash.clone(), true),
-                info_row("Algorithm", result.algorithm.name().to_string(), false),
-                info_row("Transaction", result.txid.clone(), true),
-                info_row("Block", block_str, false),
-                info_row("Saved to", output_str, false),
-                Space::with_height(16),
+            )
+            .padding([10, 16])
+            .style(theme::button_style::secondary)
+            .on_press(Message::CopyToClipboard(result.compact.clone())),
+            Space::with_width(12),
+            button(
                 row![
-                    button(
-                        row![text("📋").size(14), Space::with_width(8), text("Copy Proof").size(13),]
-                            .align_y(Alignment::Center),
-                    )
-                    .padding([10, 16])
-                    .style(theme::button_style::secondary)
-                    .on_press(Message::CopyToClipboard(result.compact.clone())),
-                    Space::with_width(12),
-                    button(
-                        row![text("🔗").size(14), Space::with_width(8), text("View in Explorer").size(13),]
-                            .align_y(Alignment::Center),
-                    )
-                    .padding([10, 16])
-                    .style(theme::button_style::secondary)
-                    .on_press(Message::OpenExplorer(result.explorer_link.clone())),
-                ],
-            ]
-            .padding(20),
-        )
-        .style(theme::container_style::card)
-        .width(Length::Fill)
+                    text("🔗").size(14),
+                    Space::with_width(8),
+                    text("View in Explorer").size(13),
+                ]
+                .align_y(Alignment::Center),
+            )
+            .padding([10, 16])
+            .style(theme::button_style::secondary)
+            .on_press(Message::OpenExplorer(result.explorer_link.clone())),
+        ]);
+
+        let border_color = if result.pending {
+            colors::WARNING
+        } else {
+            colors::SUCCESS
+        };
+
+        container(content_col.padding(20))
+            .style(move |t| {
+                let mut style = theme::container_style::card(t);
+                style.border.color = border_color;
+                style
+            })
+            .width(Length::Fill)
     } else if let Some(error) = &app.stamp_error {
         container(
             column![

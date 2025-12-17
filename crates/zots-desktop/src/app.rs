@@ -648,17 +648,18 @@ async fn run_stamp(
     let tx_result = wallet.create_timestamp_tx(&hash_bytes).await?;
     let txid = tx_result.txid.clone();
 
-    // Wait for confirmation
-    let confirmation = wallet.wait_confirmation(&txid, 10).await?;
+    // Get current block height for the pending proof
+    let current_height = wallet.get_block_height().await.unwrap_or(0) as u32;
+    let block_time = chrono::Utc::now().timestamp() as u32;
 
-    // Create proof
+    // Create proof (pending - not yet confirmed)
     let network = config.network;
     let mut proof = TimestampProof::new_with_algorithm(hash_bytes, algorithm);
     proof.add_attestation(ZcashAttestation::new(
         network,
         tx_result.txid_bytes,
-        confirmation.block_height,
-        confirmation.block_time,
+        current_height,
+        block_time,
         0,
     ));
 
@@ -670,10 +671,11 @@ async fn run_stamp(
 
     Ok(StampResult {
         hash: hash_hex,
+        pending: true, // Mark as pending until confirmed
         algorithm,
         txid,
-        block_height: confirmation.block_height,
-        block_time: confirmation.block_time as u64,
+        block_height: current_height,
+        block_time: block_time as u64,
         output_path,
         compact,
         explorer_link,

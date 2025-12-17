@@ -149,6 +149,7 @@ pub struct StampResult {
     pub output_path: PathBuf,
     pub compact: String,
     pub explorer_link: String,
+    pub pending: bool, // True if not yet confirmed
 }
 
 /// Result of a verify operation
