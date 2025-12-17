@@ -1,9 +1,8 @@
 <script lang="ts">
-  import { RefreshCw, Eye, EyeOff, ExternalLink, ChevronRight, Shield, Zap } from "lucide-svelte";
+  import { RefreshCw, Eye, EyeOff, ExternalLink, ChevronRight } from "lucide-svelte";
   import { wallet, isSyncing } from "../lib/stores/wallet";
   import { ui } from "../lib/stores/ui";
   import { syncWallet } from "../lib/utils/tauri";
-  import { formatBlockHeight } from "../lib/utils/format";
   import Button from "../lib/components/Button.svelte";
 
   let showSeed = false;
@@ -18,7 +17,7 @@
         shielded: result.balance,
         transparent: 0,
       });
-      ui.showToast("Wallet synced!", "success");
+      ui.showToast("Wallet synced", "success");
     } catch (e) {
       ui.showToast(`Sync failed: ${e}`, "error");
     } finally {
@@ -45,17 +44,14 @@
           <div class="setting-info">
             <span class="setting-label">Network</span>
             <span class="setting-value">
-              <span class="network-badge testnet">
-                <Shield size={12} />
-                Testnet
-              </span>
+              <span class="network-badge">Testnet</span>
             </span>
           </div>
         </div>
         <div class="setting-divider"></div>
         <div class="setting-item">
           <div class="setting-info">
-            <span class="setting-label">Lightwalletd Server</span>
+            <span class="setting-label">Server</span>
             <span class="setting-value secondary">testnet.zec.rocks:443</span>
           </div>
         </div>
@@ -72,14 +68,11 @@
             <span class="setting-value">
               {#if $isSyncing}
                 <span class="sync-status syncing">
-                  <RefreshCw size={14} class="spin" />
-                  Syncing...
+                  <RefreshCw size={12} class="spin" />
+                  Syncing
                 </span>
               {:else}
-                <span class="sync-status synced">
-                  <Zap size={14} />
-                  Synced
-                </span>
+                <span class="sync-status">Synced</span>
               {/if}
             </span>
           </div>
@@ -89,7 +82,7 @@
           <div class="setting-info">
             <span class="setting-label">Sync Now</span>
           </div>
-          <RefreshCw size={18} class={$isSyncing ? "spin" : ""} />
+          <RefreshCw size={16} class={$isSyncing ? "spin" : ""} />
         </button>
       </div>
     </section>
@@ -104,9 +97,9 @@
             <span class="setting-description">View your 24-word seed phrase</span>
           </div>
           {#if showSeed}
-            <EyeOff size={18} />
+            <EyeOff size={16} />
           {:else}
-            <Eye size={18} />
+            <Eye size={16} />
           {/if}
         </button>
         {#if showSeed}
@@ -137,15 +130,14 @@
           <div class="setting-info">
             <span class="setting-label">Source Code</span>
           </div>
-          <ExternalLink size={18} />
+          <ExternalLink size={16} />
         </a>
       </div>
     </section>
 
     <!-- Warning -->
     <div class="testnet-warning">
-      <Shield size={16} />
-      <span>Testnet Mode - Do not use real funds</span>
+      <span>Testnet Mode</span>
     </div>
   </div>
 </div>
@@ -156,6 +148,7 @@
     display: flex;
     flex-direction: column;
     animation: fadeIn var(--transition-normal) ease-out;
+    background: var(--bg-primary);
   }
 
   .settings-header {
@@ -164,8 +157,9 @@
   }
 
   .settings-header h1 {
-    font-size: var(--text-h2);
-    font-weight: var(--weight-bold);
+    font-size: var(--text-h3);
+    font-weight: var(--weight-semibold);
+    color: var(--text-primary);
   }
 
   .settings-content {
@@ -184,16 +178,17 @@
 
   .section-title {
     font-size: var(--text-small);
-    font-weight: var(--weight-semibold);
-    color: var(--text-secondary);
+    font-weight: var(--weight-medium);
+    color: var(--text-tertiary);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.08em;
     padding-left: var(--space-xs);
   }
 
   .settings-card {
     background: var(--bg-card);
     border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
     overflow: hidden;
   }
 
@@ -207,6 +202,7 @@
     width: 100%;
     text-align: left;
     color: var(--text-tertiary);
+    text-decoration: none;
   }
 
   .setting-item.clickable {
@@ -256,16 +252,13 @@
   .network-badge {
     display: inline-flex;
     align-items: center;
-    gap: var(--space-xs);
     padding: var(--space-xs) var(--space-sm);
-    border-radius: var(--radius-full);
+    border-radius: var(--radius-sm);
     font-size: var(--text-caption);
     font-weight: var(--weight-medium);
-  }
-
-  .network-badge.testnet {
-    background: var(--warning-dim);
-    color: var(--warning);
+    background: var(--bg-elevated);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
   }
 
   .sync-status {
@@ -273,14 +266,12 @@
     align-items: center;
     gap: var(--space-xs);
     font-weight: var(--weight-medium);
+    color: var(--text-secondary);
+    font-size: var(--text-small);
   }
 
   .sync-status.syncing {
-    color: var(--accent);
-  }
-
-  .sync-status.synced {
-    color: var(--success);
+    color: var(--text-tertiary);
   }
 
   .sync-status :global(.spin) {
@@ -298,11 +289,12 @@
 
   .seed-warning {
     font-size: var(--text-small);
-    color: var(--error);
+    color: var(--text-secondary);
     margin-bottom: var(--space-md);
-    padding: var(--space-sm);
-    background: var(--error-dim);
+    padding: var(--space-sm) var(--space-md);
+    background: var(--bg-elevated);
     border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
   }
 
   .seed-words {
@@ -317,11 +309,13 @@
     justify-content: center;
     gap: var(--space-sm);
     padding: var(--space-md);
-    background: var(--warning-dim);
-    color: var(--warning);
+    background: var(--bg-card);
+    color: var(--text-tertiary);
     border-radius: var(--radius-md);
     font-size: var(--text-small);
     font-weight: var(--weight-medium);
     margin-top: auto;
+    border: 1px solid var(--border);
+    letter-spacing: 0.02em;
   }
 </style>

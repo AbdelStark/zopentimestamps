@@ -22,25 +22,34 @@
 <div class="history">
   <header class="history-header">
     <h1>Activity</h1>
-    <p class="header-subtitle">Your transaction history</p>
   </header>
 
   <div class="history-content">
     {#if loading}
       <div class="loading-state">
-        <Loader2 size={32} class="spin" />
-        <p>Loading transactions...</p>
+        <Loader2 size={24} class="spin" />
+        <p>Loading transactions</p>
       </div>
     {:else if error}
       <div class="error-state">
-        <p class="error-icon">⚠️</p>
+        <div class="error-icon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+        </div>
         <p class="error-message">{error}</p>
       </div>
     {:else if transactions.length === 0}
       <div class="empty-state">
-        <div class="empty-icon">📭</div>
+        <div class="empty-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+          </svg>
+        </div>
         <h3>No transactions yet</h3>
-        <p>Send or receive ZEC to see your activity here</p>
+        <p>Your activity will appear here</p>
       </div>
     {:else}
       <div class="transaction-list">
@@ -66,6 +75,7 @@
     display: flex;
     flex-direction: column;
     animation: fadeIn var(--transition-normal) ease-out;
+    background: var(--bg-primary);
   }
 
   .history-header {
@@ -74,14 +84,9 @@
   }
 
   .history-header h1 {
-    font-size: var(--text-h2);
-    font-weight: var(--weight-bold);
-    margin-bottom: var(--space-xs);
-  }
-
-  .header-subtitle {
-    font-size: var(--text-small);
-    color: var(--text-secondary);
+    font-size: var(--text-h3);
+    font-weight: var(--weight-semibold);
+    color: var(--text-primary);
   }
 
   .history-content {
@@ -101,7 +106,11 @@
 
   .loading-state :global(.spin) {
     animation: spin 1s linear infinite;
-    color: var(--accent);
+    color: var(--text-tertiary);
+  }
+
+  .loading-state p {
+    font-size: var(--text-small);
   }
 
   .error-state {
@@ -115,11 +124,12 @@
   }
 
   .error-icon {
-    font-size: 3rem;
+    color: var(--text-tertiary);
   }
 
   .error-message {
     color: var(--text-secondary);
+    font-size: var(--text-small);
   }
 
   .empty-state {
@@ -133,22 +143,26 @@
   }
 
   .empty-icon {
-    font-size: 4rem;
+    color: var(--text-tertiary);
+    opacity: 0.5;
+    margin-bottom: var(--space-sm);
   }
 
   .empty-state h3 {
-    font-size: var(--text-h3);
-    font-weight: var(--weight-semibold);
+    font-size: var(--text-body);
+    font-weight: var(--weight-medium);
+    color: var(--text-primary);
   }
 
   .empty-state p {
-    color: var(--text-secondary);
+    color: var(--text-tertiary);
     font-size: var(--text-small);
   }
 
   .transaction-list {
     background: var(--bg-card);
     border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
     overflow: hidden;
   }
 </style>

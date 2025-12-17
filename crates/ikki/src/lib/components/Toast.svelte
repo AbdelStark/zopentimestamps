@@ -1,26 +1,14 @@
 <script lang="ts">
-  import { X, CheckCircle, AlertCircle, AlertTriangle, Info } from "lucide-svelte";
+  import { X } from "lucide-svelte";
   import { ui, type Toast } from "../stores/ui";
 
   export let toast: Toast;
-
-  const icons = {
-    success: CheckCircle,
-    error: AlertCircle,
-    warning: AlertTriangle,
-    info: Info,
-  };
-
-  $: Icon = icons[toast.type];
 </script>
 
 <div class="toast toast-{toast.type}" role="alert">
-  <div class="toast-icon">
-    <Icon size={20} />
-  </div>
   <span class="toast-message">{toast.message}</span>
   <button class="toast-close" onclick={() => ui.dismissToast(toast.id)}>
-    <X size={16} />
+    <X size={14} />
   </button>
 </div>
 
@@ -28,52 +16,28 @@
   .toast {
     display: flex;
     align-items: center;
-    gap: var(--space-sm);
-    padding: var(--space-md);
+    gap: var(--space-md);
+    padding: var(--space-md) var(--space-lg);
     background: var(--bg-card);
+    border: 1px solid var(--border);
     border-radius: var(--radius-md);
-    box-shadow: var(--shadow-lg);
     animation: slideUp var(--transition-normal) ease-out;
-    border-left: 3px solid;
   }
 
   .toast-success {
-    border-left-color: var(--success);
+    border-left: 2px solid var(--success);
   }
 
   .toast-error {
-    border-left-color: var(--error);
+    border-left: 2px solid var(--error);
   }
 
   .toast-warning {
-    border-left-color: var(--warning);
+    border-left: 2px solid var(--warning);
   }
 
   .toast-info {
-    border-left-color: var(--info);
-  }
-
-  .toast-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-  }
-
-  .toast-success .toast-icon {
-    color: var(--success);
-  }
-
-  .toast-error .toast-icon {
-    color: var(--error);
-  }
-
-  .toast-warning .toast-icon {
-    color: var(--warning);
-  }
-
-  .toast-info .toast-icon {
-    color: var(--info);
+    border-left: 2px solid var(--text-secondary);
   }
 
   .toast-message {
@@ -92,7 +56,7 @@
     border: none;
     cursor: pointer;
     color: var(--text-tertiary);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-xs);
     transition: all var(--transition-fast);
   }
 

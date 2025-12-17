@@ -1,10 +1,10 @@
 <script lang="ts">
-  import { Home, History, Settings } from "lucide-svelte";
+  import { Home, Clock, Settings } from "lucide-svelte";
   import { ui, currentView } from "../stores/ui";
 
   const navItems = [
     { id: "home" as const, icon: Home, label: "Home" },
-    { id: "history" as const, icon: History, label: "Activity" },
+    { id: "history" as const, icon: Clock, label: "Activity" },
     { id: "settings" as const, icon: Settings, label: "Settings" },
   ];
 </script>
@@ -17,12 +17,9 @@
       onclick={() => ui.navigate(item.id)}
     >
       <div class="nav-icon">
-        <item.icon size={24} strokeWidth={$currentView === item.id ? 2.5 : 2} />
+        <item.icon size={20} strokeWidth={$currentView === item.id ? 2 : 1.5} />
       </div>
       <span class="nav-label">{item.label}</span>
-      {#if $currentView === item.id}
-        <div class="nav-indicator"></div>
-      {/if}
     </button>
   {/each}
 </nav>
@@ -39,7 +36,7 @@
     display: flex;
     align-items: center;
     justify-content: space-around;
-    padding: 0 var(--space-md);
+    padding: 0 var(--space-lg);
     z-index: 100;
   }
 
@@ -49,14 +46,13 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: var(--space-xs);
+    gap: 4px;
     padding: var(--space-sm);
     background: none;
     border: none;
     cursor: pointer;
     color: var(--text-tertiary);
     transition: color var(--transition-fast);
-    position: relative;
   }
 
   .nav-item:hover {
@@ -64,30 +60,20 @@
   }
 
   .nav-item.active {
-    color: var(--accent);
+    color: var(--text-primary);
   }
 
   .nav-icon {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 28px;
+    width: 24px;
+    height: 24px;
   }
 
   .nav-label {
-    font-size: var(--text-caption);
+    font-size: 11px;
     font-weight: var(--weight-medium);
-  }
-
-  .nav-indicator {
-    position: absolute;
-    top: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 24px;
-    height: 3px;
-    background: var(--accent);
-    border-radius: 0 0 var(--radius-full) var(--radius-full);
+    letter-spacing: 0.02em;
   }
 </style>

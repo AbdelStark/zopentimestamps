@@ -12,7 +12,7 @@
 
 <div class="input-wrapper" class:has-error={error}>
   {#if label}
-    <label class="input-label">{label}</label>
+    <span class="input-label">{label}</span>
   {/if}
   <input
     class="input"
@@ -33,7 +33,7 @@
   .input-wrapper {
     display: flex;
     flex-direction: column;
-    gap: var(--space-xs);
+    gap: var(--space-sm);
   }
 
   .input-label {
@@ -52,6 +52,7 @@
     font-family: var(--font-family);
     font-size: var(--text-body);
     transition: all var(--transition-fast);
+    height: 48px;
   }
 
   .input::placeholder {
@@ -60,8 +61,8 @@
 
   .input:focus {
     outline: none;
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px var(--accent-dim);
+    border-color: var(--border-focus);
+    background: var(--bg-secondary);
   }
 
   .input:disabled {
@@ -75,10 +76,6 @@
 
   .has-error .input {
     border-color: var(--error);
-  }
-
-  .has-error .input:focus {
-    box-shadow: 0 0 0 3px var(--error-dim);
   }
 
   .input-error {

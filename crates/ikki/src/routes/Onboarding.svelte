@@ -1,11 +1,10 @@
 <script lang="ts">
-  import { ArrowLeft, Plus, Download, Copy, CheckCircle, Loader2, Eye, EyeOff } from "lucide-svelte";
+  import { ArrowLeft, Plus, Import, Copy, Check, Loader2, Eye, EyeOff } from "lucide-svelte";
   import { wallet } from "../lib/stores/wallet";
   import { ui } from "../lib/stores/ui";
   import { generateSeed, initWallet, loadWallet } from "../lib/utils/tauri";
   import { copyToClipboard } from "../lib/utils/format";
   import Button from "../lib/components/Button.svelte";
-  import Input from "../lib/components/Input.svelte";
 
   type Step = "welcome" | "choice" | "create" | "import" | "confirm" | "loading" | "complete";
 
@@ -14,7 +13,6 @@
   let inputSeed = "";
   let seedConfirmed = false;
   let showSeed = true;
-  let loading = false;
   let error = "";
 
   async function handleCreateWallet() {
@@ -29,11 +27,11 @@
     }
   }
 
-  async function handleImportWallet() {
+  function handleImportWallet() {
     currentStep = "import";
   }
 
-  async function handleConfirmSeed() {
+  function handleConfirmSeed() {
     currentStep = "confirm";
   }
 
@@ -56,14 +54,15 @@
   }
 
   async function handleImportConfirm() {
-    if (inputSeed.split(" ").length !== 24) {
+    const words = inputSeed.trim().split(/\s+/).filter(w => w.length > 0);
+    if (words.length !== 24) {
       ui.showToast("Please enter a valid 24-word seed phrase", "error");
       return;
     }
 
     currentStep = "loading";
     try {
-      const walletInfo = await loadWallet(inputSeed);
+      const walletInfo = await loadWallet(words.join(" "));
       wallet.setInfo({
         address: walletInfo.address,
         balance: walletInfo.balance,
@@ -77,45 +76,39 @@
     }
   }
 
-  async function handleComplete() {
+  function handleComplete() {
     ui.setOnboardingComplete();
   }
 
   async function handleCopySeed() {
     const success = await copyToClipboard(seedPhrase);
     if (success) {
-      ui.showToast("Seed phrase copied!", "success");
+      ui.showToast("Seed phrase copied", "success");
     }
   }
 
   function goBack() {
-    if (currentStep === "choice") {
-      currentStep = "welcome";
-    } else if (currentStep === "create" || currentStep === "import") {
-      currentStep = "choice";
-    } else if (currentStep === "confirm") {
-      currentStep = "create";
-    }
+    if (currentStep === "choice") currentStep = "welcome";
+    else if (currentStep === "create" || currentStep === "import") currentStep = "choice";
+    else if (currentStep === "confirm") currentStep = "create";
   }
 
   function handleSeedInput(e: Event) {
     const target = e.target as HTMLTextAreaElement;
     inputSeed = target.value;
   }
+
+  $: wordCount = inputSeed.trim().split(/\s+/).filter(w => w.length > 0).length;
 </script>
 
 <div class="onboarding">
   {#if currentStep === "welcome"}
-    <!-- Welcome Screen -->
-    <div class="onboarding-screen welcome animate-fade-in">
+    <div class="screen welcome animate-fade-in">
       <div class="welcome-content">
-        <div class="logo">
-          <span class="logo-text">Ikki</span>
-        </div>
-        <h1>Welcome to Ikki</h1>
-        <p>A beautiful Zcash wallet for everyone. Private, secure, and easy to use.</p>
+        <div class="logo">ikki</div>
+        <p class="tagline">Private digital assets</p>
       </div>
-      <div class="onboarding-actions">
+      <div class="screen-actions">
         <Button variant="primary" size="lg" fullWidth onclick={() => (currentStep = "choice")}>
           Get Started
         </Button>
@@ -123,37 +116,35 @@
     </div>
 
   {:else if currentStep === "choice"}
-    <!-- Choice Screen -->
-    <div class="onboarding-screen choice animate-fade-in">
-      <header class="onboarding-header">
-        <button class="back-button" onclick={goBack}>
-          <ArrowLeft size={24} />
+    <div class="screen animate-fade-in">
+      <header class="screen-header">
+        <button class="back-btn" onclick={goBack}>
+          <ArrowLeft size={20} />
         </button>
-        <h2>Set Up Wallet</h2>
-        <div class="header-spacer"></div>
       </header>
 
-      <div class="choice-content">
-        <p class="choice-subtitle">How would you like to get started?</p>
+      <div class="screen-content">
+        <h1>Set up wallet</h1>
+        <p class="subtitle">Choose how you'd like to get started</p>
 
-        <div class="choice-options">
+        <div class="choices">
           <button class="choice-card" onclick={handleCreateWallet}>
-            <div class="choice-icon create">
-              <Plus size={24} />
+            <div class="choice-icon">
+              <Plus size={20} strokeWidth={1.5} />
             </div>
-            <div class="choice-info">
-              <span class="choice-title">Create New Wallet</span>
-              <span class="choice-description">Generate a new wallet with a fresh seed phrase</span>
+            <div class="choice-text">
+              <span class="choice-title">Create new wallet</span>
+              <span class="choice-desc">Generate a new recovery phrase</span>
             </div>
           </button>
 
           <button class="choice-card" onclick={handleImportWallet}>
-            <div class="choice-icon import">
-              <Download size={24} />
+            <div class="choice-icon">
+              <Import size={20} strokeWidth={1.5} />
             </div>
-            <div class="choice-info">
-              <span class="choice-title">Import Existing Wallet</span>
-              <span class="choice-description">Restore your wallet using a seed phrase</span>
+            <div class="choice-text">
+              <span class="choice-title">Import existing wallet</span>
+              <span class="choice-desc">Use your 24-word recovery phrase</span>
             </div>
           </button>
         </div>
@@ -161,121 +152,115 @@
     </div>
 
   {:else if currentStep === "create"}
-    <!-- Create Wallet - Show Seed -->
-    <div class="onboarding-screen create animate-fade-in">
-      <header class="onboarding-header">
-        <button class="back-button" onclick={goBack}>
-          <ArrowLeft size={24} />
+    <div class="screen animate-fade-in">
+      <header class="screen-header">
+        <button class="back-btn" onclick={goBack}>
+          <ArrowLeft size={20} />
         </button>
-        <h2>Recovery Phrase</h2>
-        <div class="header-spacer"></div>
       </header>
 
-      <div class="create-content">
-        <div class="warning-box">
-          <p>Write down these 24 words in order and keep them safe. This is the only way to recover your wallet.</p>
-        </div>
+      <div class="screen-content">
+        <h1>Recovery phrase</h1>
+        <p class="subtitle">Write down these 24 words in order. Keep them secure and private.</p>
 
         <div class="seed-container">
           <div class="seed-header">
-            <span>Your Recovery Phrase</span>
-            <button class="toggle-visibility" onclick={() => (showSeed = !showSeed)}>
+            <button class="visibility-toggle" onclick={() => (showSeed = !showSeed)}>
               {#if showSeed}
-                <EyeOff size={18} />
+                <EyeOff size={16} />
               {:else}
-                <Eye size={18} />
+                <Eye size={16} />
               {/if}
             </button>
           </div>
           <div class="seed-grid" class:blurred={!showSeed}>
             {#each seedPhrase.split(" ") as word, i}
               <div class="seed-word">
-                <span class="word-number">{i + 1}</span>
+                <span class="word-num">{i + 1}</span>
                 <span class="word-text">{word}</span>
               </div>
             {/each}
           </div>
         </div>
 
-        <button class="copy-button" onclick={handleCopySeed}>
-          <Copy size={16} />
+        <button class="copy-link" onclick={handleCopySeed}>
+          <Copy size={14} />
           Copy to clipboard
         </button>
       </div>
 
-      <div class="onboarding-actions">
+      <div class="screen-actions">
         <Button variant="primary" size="lg" fullWidth onclick={handleConfirmSeed}>
-          I've Written It Down
+          I've saved my recovery phrase
         </Button>
       </div>
     </div>
 
   {:else if currentStep === "import"}
-    <!-- Import Wallet -->
-    <div class="onboarding-screen import animate-fade-in">
-      <header class="onboarding-header">
-        <button class="back-button" onclick={goBack}>
-          <ArrowLeft size={24} />
+    <div class="screen animate-fade-in">
+      <header class="screen-header">
+        <button class="back-btn" onclick={goBack}>
+          <ArrowLeft size={20} />
         </button>
-        <h2>Import Wallet</h2>
-        <div class="header-spacer"></div>
       </header>
 
-      <div class="import-content">
-        <p class="import-subtitle">Enter your 24-word recovery phrase to restore your wallet.</p>
+      <div class="screen-content">
+        <h1>Import wallet</h1>
+        <p class="subtitle">Enter your 24-word recovery phrase to restore your wallet.</p>
 
         <div class="seed-input-container">
           <textarea
             class="seed-input"
-            placeholder="Enter your 24-word seed phrase, separated by spaces..."
+            placeholder="Enter your recovery phrase..."
             value={inputSeed}
             oninput={handleSeedInput}
             rows={6}
+            spellcheck="false"
+            autocomplete="off"
+            autocorrect="off"
+            autocapitalize="off"
           ></textarea>
-          <span class="word-count">{inputSeed.split(" ").filter(w => w.trim()).length} / 24 words</span>
+          <span class="word-counter" class:valid={wordCount === 24}>
+            {wordCount}/24 words
+          </span>
         </div>
       </div>
 
-      <div class="onboarding-actions">
+      <div class="screen-actions">
         <Button
           variant="primary"
           size="lg"
           fullWidth
-          disabled={inputSeed.split(" ").filter(w => w.trim()).length !== 24}
+          disabled={wordCount !== 24}
           onclick={handleImportConfirm}
         >
-          Import Wallet
+          Import wallet
         </Button>
       </div>
     </div>
 
   {:else if currentStep === "confirm"}
-    <!-- Confirm Seed Backup -->
-    <div class="onboarding-screen confirm animate-fade-in">
-      <header class="onboarding-header">
-        <button class="back-button" onclick={goBack}>
-          <ArrowLeft size={24} />
+    <div class="screen animate-fade-in">
+      <header class="screen-header">
+        <button class="back-btn" onclick={goBack}>
+          <ArrowLeft size={20} />
         </button>
-        <h2>Confirm Backup</h2>
-        <div class="header-spacer"></div>
       </header>
 
-      <div class="confirm-content">
+      <div class="screen-content center">
         <div class="confirm-icon">
-          <CheckCircle size={64} />
+          <Check size={32} strokeWidth={1.5} />
         </div>
-        <h3>Have you securely stored your recovery phrase?</h3>
-        <p>You will need these words to recover your wallet if you lose access to this device.</p>
+        <h1>Confirm backup</h1>
+        <p class="subtitle">Have you securely stored your recovery phrase?</p>
 
-        <div class="confirm-checklist">
-          <label class="checkbox-item">
-            <input type="checkbox" bind:checked={seedConfirmed} />
-            <span>I understand that if I lose my recovery phrase, I will lose access to my funds forever.</span>
-          </label>
-        </div>
+        <label class="checkbox-row">
+          <input type="checkbox" bind:checked={seedConfirmed} />
+          <span>I understand that losing my recovery phrase means losing access to my funds.</span>
+        </label>
       </div>
 
-      <div class="onboarding-actions">
+      <div class="screen-actions">
         <Button
           variant="primary"
           size="lg"
@@ -283,34 +268,31 @@
           disabled={!seedConfirmed}
           onclick={handleSeedConfirmed}
         >
-          Create Wallet
+          Create wallet
         </Button>
       </div>
     </div>
 
   {:else if currentStep === "loading"}
-    <!-- Loading -->
-    <div class="onboarding-screen loading-screen animate-fade-in">
+    <div class="screen center animate-fade-in">
       <div class="loading-content">
-        <Loader2 size={48} class="spin" />
-        <h2>Setting up your wallet...</h2>
-        <p>This may take a moment</p>
+        <Loader2 size={32} class="spin" />
+        <p>Setting up your wallet...</p>
       </div>
     </div>
 
   {:else if currentStep === "complete"}
-    <!-- Complete -->
-    <div class="onboarding-screen complete animate-fade-in">
+    <div class="screen center animate-fade-in">
       <div class="complete-content">
         <div class="success-icon">
-          <CheckCircle size={80} />
+          <Check size={32} strokeWidth={1.5} />
         </div>
-        <h1>You're All Set!</h1>
-        <p>Your wallet has been created successfully. You can now send and receive ZEC.</p>
+        <h1>You're all set</h1>
+        <p class="subtitle">Your wallet is ready to use.</p>
       </div>
-      <div class="onboarding-actions">
+      <div class="screen-actions">
         <Button variant="primary" size="lg" fullWidth onclick={handleComplete}>
-          Open Wallet
+          Open wallet
         </Button>
       </div>
     </div>
@@ -321,28 +303,28 @@
   .onboarding {
     min-height: 100vh;
     background: var(--bg-primary);
-    display: flex;
-    flex-direction: column;
   }
 
-  .onboarding-screen {
-    flex: 1;
+  .screen {
+    min-height: 100vh;
     display: flex;
     flex-direction: column;
     padding: var(--space-lg);
     max-width: var(--max-width);
     margin: 0 auto;
-    width: 100%;
   }
 
-  .onboarding-header {
-    display: flex;
+  .screen.center {
+    justify-content: center;
     align-items: center;
-    justify-content: space-between;
+    text-align: center;
+  }
+
+  .screen-header {
     margin-bottom: var(--space-xl);
   }
 
-  .back-button {
+  .back-btn {
     width: 40px;
     height: 40px;
     display: flex;
@@ -352,71 +334,73 @@
     border: none;
     color: var(--text-primary);
     cursor: pointer;
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-sm);
+    margin-left: -8px;
     transition: background var(--transition-fast);
   }
 
-  .back-button:hover {
+  .back-btn:hover {
     background: var(--bg-card);
   }
 
-  .onboarding-header h2 {
-    font-size: var(--text-h3);
+  .screen-content {
+    flex: 1;
+  }
+
+  .screen-content.center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .screen-content h1 {
+    font-size: var(--text-h1);
     font-weight: var(--weight-semibold);
+    margin-bottom: var(--space-sm);
   }
 
-  .header-spacer {
-    width: 40px;
+  .subtitle {
+    font-size: var(--text-body);
+    color: var(--text-secondary);
+    margin-bottom: var(--space-xl);
+    line-height: 1.5;
   }
 
-  .onboarding-actions {
-    margin-top: auto;
+  .screen-actions {
     padding-top: var(--space-xl);
   }
 
   /* Welcome */
   .welcome {
     justify-content: center;
-    text-align: center;
   }
 
   .welcome-content {
+    flex: 1;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: var(--space-lg);
+    justify-content: center;
   }
 
-  .logo-text {
-    font-size: 4rem;
+  .logo {
+    font-size: 3rem;
     font-weight: var(--weight-bold);
-    background: var(--gradient-accent);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: var(--text-primary);
+    letter-spacing: -0.03em;
+    margin-bottom: var(--space-sm);
   }
 
-  .welcome h1 {
-    font-size: var(--text-h1);
-  }
-
-  .welcome p {
+  .tagline {
     font-size: var(--text-body);
-    color: var(--text-secondary);
-    max-width: 280px;
+    color: var(--text-tertiary);
+    margin: 0;
   }
 
-  /* Choice */
-  .choice-content {
-    flex: 1;
-  }
-
-  .choice-subtitle {
-    color: var(--text-secondary);
-    margin-bottom: var(--space-xl);
-  }
-
-  .choice-options {
+  /* Choices */
+  .choices {
     display: flex;
     flex-direction: column;
     gap: var(--space-md);
@@ -429,102 +413,72 @@
     padding: var(--space-lg);
     background: var(--bg-card);
     border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-md);
     cursor: pointer;
     text-align: left;
     transition: all var(--transition-fast);
   }
 
   .choice-card:hover {
-    border-color: var(--accent);
     background: var(--bg-elevated);
+    border-color: var(--border-light);
   }
 
   .choice-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: var(--radius-md);
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-sm);
     display: flex;
     align-items: center;
     justify-content: center;
+    background: var(--bg-primary);
+    color: var(--text-secondary);
     flex-shrink: 0;
   }
 
-  .choice-icon.create {
-    background: var(--accent-dim);
-    color: var(--accent);
-  }
-
-  .choice-icon.import {
-    background: var(--info-dim);
-    color: var(--info);
-  }
-
-  .choice-info {
+  .choice-text {
     display: flex;
     flex-direction: column;
-    gap: var(--space-xs);
+    gap: 4px;
   }
 
   .choice-title {
     font-size: var(--text-body);
-    font-weight: var(--weight-semibold);
+    font-weight: var(--weight-medium);
     color: var(--text-primary);
   }
 
-  .choice-description {
+  .choice-desc {
     font-size: var(--text-small);
-    color: var(--text-secondary);
+    color: var(--text-tertiary);
   }
 
-  /* Create */
-  .create-content {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-lg);
-  }
-
-  .warning-box {
-    padding: var(--space-md);
-    background: var(--warning-dim);
-    border-radius: var(--radius-md);
-  }
-
-  .warning-box p {
-    color: var(--warning);
-    font-size: var(--text-small);
-    margin: 0;
-  }
-
+  /* Seed Display */
   .seed-container {
     background: var(--bg-card);
-    border-radius: var(--radius-lg);
-    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--space-md);
   }
 
   .seed-header {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: var(--space-md);
+    justify-content: flex-end;
+    padding: var(--space-sm) var(--space-md);
     border-bottom: 1px solid var(--border);
-    font-size: var(--text-small);
-    font-weight: var(--weight-medium);
-    color: var(--text-secondary);
   }
 
-  .toggle-visibility {
+  .visibility-toggle {
     background: none;
     border: none;
     color: var(--text-tertiary);
     cursor: pointer;
     padding: var(--space-xs);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-xs);
     transition: all var(--transition-fast);
   }
 
-  .toggle-visibility:hover {
+  .visibility-toggle:hover {
     color: var(--text-primary);
     background: var(--bg-elevated);
   }
@@ -538,7 +492,8 @@
   }
 
   .seed-grid.blurred {
-    filter: blur(8px);
+    filter: blur(6px);
+    user-select: none;
   }
 
   .seed-word {
@@ -547,13 +502,14 @@
     gap: var(--space-sm);
     padding: var(--space-sm);
     background: var(--bg-primary);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-xs);
   }
 
-  .word-number {
+  .word-num {
     font-size: var(--text-caption);
     color: var(--text-tertiary);
-    min-width: 18px;
+    min-width: 16px;
+    font-family: var(--font-mono);
   }
 
   .word-text {
@@ -562,7 +518,7 @@
     color: var(--text-primary);
   }
 
-  .copy-button {
+  .copy-link {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -570,47 +526,35 @@
     padding: var(--space-sm);
     background: none;
     border: none;
-    color: var(--accent);
-    font-size: var(--text-small);
-    font-weight: var(--weight-medium);
-    cursor: pointer;
-    transition: opacity var(--transition-fast);
-  }
-
-  .copy-button:hover {
-    opacity: 0.8;
-  }
-
-  /* Import */
-  .import-content {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-lg);
-  }
-
-  .import-subtitle {
     color: var(--text-secondary);
+    font-size: var(--text-small);
+    cursor: pointer;
+    transition: color var(--transition-fast);
+    width: 100%;
   }
 
+  .copy-link:hover {
+    color: var(--text-primary);
+  }
+
+  /* Seed Input */
   .seed-input-container {
-    flex: 1;
     display: flex;
     flex-direction: column;
     gap: var(--space-sm);
   }
 
   .seed-input {
-    flex: 1;
-    min-height: 150px;
+    width: 100%;
+    min-height: 160px;
     padding: var(--space-md);
-    background: var(--bg-input);
+    background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
     color: var(--text-primary);
     font-family: var(--font-mono);
     font-size: var(--text-small);
-    line-height: 1.6;
+    line-height: 1.8;
     resize: none;
   }
 
@@ -620,116 +564,102 @@
 
   .seed-input:focus {
     outline: none;
-    border-color: var(--accent);
+    border-color: var(--border-focus);
   }
 
-  .word-count {
+  .word-counter {
     font-size: var(--text-caption);
     color: var(--text-tertiary);
     text-align: right;
   }
 
+  .word-counter.valid {
+    color: var(--success);
+  }
+
   /* Confirm */
-  .confirm-content {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    gap: var(--space-lg);
-    padding-top: var(--space-xl);
-  }
-
   .confirm-icon {
-    color: var(--accent);
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    margin-bottom: var(--space-lg);
   }
 
-  .confirm-content h3 {
-    font-size: var(--text-h3);
-  }
-
-  .confirm-content p {
-    color: var(--text-secondary);
-    max-width: 300px;
-  }
-
-  .confirm-checklist {
-    width: 100%;
+  .checkbox-row {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-md);
+    padding: var(--space-md);
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
     text-align: left;
     margin-top: var(--space-lg);
   }
 
-  .checkbox-item {
-    display: flex;
-    align-items: flex-start;
-    gap: var(--space-sm);
-    cursor: pointer;
-    padding: var(--space-md);
-    background: var(--bg-card);
-    border-radius: var(--radius-md);
+  .checkbox-row input {
+    margin-top: 2px;
+    accent-color: var(--text-primary);
   }
 
-  .checkbox-item input {
-    margin-top: 4px;
-    accent-color: var(--accent);
-  }
-
-  .checkbox-item span {
+  .checkbox-row span {
     font-size: var(--text-small);
     color: var(--text-secondary);
     line-height: 1.5;
   }
 
   /* Loading */
-  .loading-screen {
-    justify-content: center;
-    align-items: center;
-  }
-
   .loading-content {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: var(--space-lg);
-    text-align: center;
   }
 
   .loading-content :global(.spin) {
     animation: spin 1s linear infinite;
-    color: var(--accent);
-  }
-
-  .loading-content h2 {
-    font-size: var(--text-h3);
+    color: var(--text-secondary);
   }
 
   .loading-content p {
     color: var(--text-secondary);
+    margin: 0;
   }
 
   /* Complete */
-  .complete {
-    justify-content: center;
-  }
-
   .complete-content {
     display: flex;
     flex-direction: column;
     align-items: center;
     text-align: center;
-    gap: var(--space-lg);
+    margin-bottom: var(--space-xl);
   }
 
   .success-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
     color: var(--success);
+    margin-bottom: var(--space-lg);
   }
 
-  .complete h1 {
-    font-size: var(--text-h1);
+  .complete-content h1 {
+    margin-bottom: var(--space-sm);
   }
 
-  .complete p {
-    color: var(--text-secondary);
-    max-width: 280px;
+  .complete-content .subtitle {
+    margin-bottom: 0;
   }
 </style>

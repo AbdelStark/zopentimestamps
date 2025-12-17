@@ -16,7 +16,7 @@
   {onclick}
 >
   {#if loading}
-    <Loader2 size={size === "sm" ? 14 : size === "lg" ? 20 : 16} class="spin" />
+    <Loader2 size={size === "sm" ? 14 : 16} class="spin" />
   {/if}
   <slot />
 </button>
@@ -28,15 +28,16 @@
     justify-content: center;
     gap: var(--space-sm);
     font-family: var(--font-family);
-    font-weight: var(--weight-semibold);
+    font-weight: var(--weight-medium);
     border: none;
     cursor: pointer;
     transition: all var(--transition-fast);
     white-space: nowrap;
+    letter-spacing: 0.01em;
   }
 
   .button:disabled {
-    opacity: 0.5;
+    opacity: 0.4;
     cursor: not-allowed;
   }
 
@@ -49,42 +50,46 @@
     padding: var(--space-sm) var(--space-md);
     font-size: var(--text-small);
     border-radius: var(--radius-sm);
+    height: 36px;
   }
 
   .button-md {
     padding: var(--space-md) var(--space-lg);
     font-size: var(--text-body);
     border-radius: var(--radius-md);
+    height: 44px;
   }
 
   .button-lg {
-    padding: var(--space-lg) var(--space-xl);
+    padding: var(--space-md) var(--space-xl);
     font-size: var(--text-body);
     border-radius: var(--radius-md);
+    height: 52px;
   }
 
-  /* Variants */
+  /* Primary - White/Light */
   .button-primary {
-    background: var(--accent);
-    color: var(--bg-primary);
+    background: var(--text-primary);
+    color: var(--text-inverse);
   }
 
   .button-primary:not(:disabled):hover {
-    background: var(--accent-hover);
-    box-shadow: var(--shadow-glow);
+    background: var(--accent-secondary);
   }
 
+  /* Secondary - Border */
   .button-secondary {
-    background: var(--bg-card);
+    background: transparent;
     color: var(--text-primary);
-    border: 1px solid var(--border);
+    border: 1px solid var(--border-light);
   }
 
   .button-secondary:not(:disabled):hover {
-    background: var(--bg-elevated);
-    border-color: var(--border-light);
+    background: var(--bg-card);
+    border-color: var(--border-focus);
   }
 
+  /* Ghost */
   .button-ghost {
     background: transparent;
     color: var(--text-secondary);
@@ -95,14 +100,14 @@
     color: var(--text-primary);
   }
 
+  /* Danger */
   .button-danger {
-    background: var(--send);
+    background: var(--error);
     color: white;
   }
 
   .button-danger:not(:disabled):hover {
-    background: #e63e35;
-    box-shadow: 0 4px 16px rgba(255, 69, 58, 0.4);
+    background: #ef4444;
   }
 
   .full-width {

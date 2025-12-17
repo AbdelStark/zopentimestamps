@@ -1,14 +1,14 @@
 <script lang="ts">
-  import { ArrowLeft, Copy, Shield, Share2 } from "lucide-svelte";
+  import { ArrowLeft, Copy, Share2 } from "lucide-svelte";
   import { address } from "../lib/stores/wallet";
   import { ui } from "../lib/stores/ui";
-  import { copyToClipboard, truncateAddress } from "../lib/utils/format";
+  import { copyToClipboard } from "../lib/utils/format";
   import Button from "../lib/components/Button.svelte";
 
   async function handleCopy() {
     const success = await copyToClipboard($address);
     if (success) {
-      ui.showToast("Address copied!", "success");
+      ui.showToast("Address copied", "success");
     } else {
       ui.showToast("Failed to copy", "error");
     }
@@ -18,7 +18,7 @@
     if (navigator.share) {
       try {
         await navigator.share({
-          title: "My Zcash Address",
+          title: "ZEC Address",
           text: $address,
         });
       } catch (e) {
@@ -37,9 +37,9 @@
 <div class="receive">
   <header class="receive-header">
     <button class="back-button" onclick={handleBack}>
-      <ArrowLeft size={24} />
+      <ArrowLeft size={20} />
     </button>
-    <h1>Receive ZEC</h1>
+    <h1>Receive</h1>
     <div class="header-spacer"></div>
   </header>
 
@@ -48,13 +48,15 @@
       <div class="qr-container">
         <!-- QR Code placeholder - would need a QR library -->
         <div class="qr-placeholder">
-          <div class="qr-pattern"></div>
+          <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7"/>
+            <rect x="14" y="3" width="7" height="7"/>
+            <rect x="14" y="14" width="7" height="7"/>
+            <rect x="3" y="14" width="7" height="7"/>
+          </svg>
         </div>
       </div>
-      <div class="shielded-badge">
-        <Shield size={14} />
-        <span>Shielded Address</span>
-      </div>
+      <span class="address-type">Shielded Address</span>
     </div>
 
     <div class="address-section">
@@ -66,18 +68,18 @@
 
     <div class="actions">
       <Button variant="primary" size="lg" fullWidth onclick={handleCopy}>
-        <Copy size={18} />
+        <Copy size={16} />
         Copy Address
       </Button>
       <Button variant="secondary" size="lg" fullWidth onclick={handleShare}>
-        <Share2 size={18} />
+        <Share2 size={16} />
         Share
       </Button>
     </div>
 
     <div class="info-section">
       <p class="info-text">
-        Share this address to receive ZEC. Only send Zcash (ZEC) to this address.
+        Only send ZEC to this address. Sending other assets may result in permanent loss.
       </p>
     </div>
   </div>
@@ -88,6 +90,7 @@
     min-height: 100%;
     display: flex;
     flex-direction: column;
+    background: var(--bg-primary);
   }
 
   .receive-header {
@@ -106,19 +109,22 @@
     justify-content: center;
     background: none;
     border: none;
-    color: var(--text-primary);
+    color: var(--text-secondary);
     cursor: pointer;
     border-radius: var(--radius-md);
-    transition: background var(--transition-fast);
+    transition: all var(--transition-fast);
   }
 
   .back-button:hover {
+    color: var(--text-primary);
     background: var(--bg-card);
   }
 
   .receive-header h1 {
-    font-size: var(--text-h3);
+    font-size: var(--text-body);
     font-weight: var(--weight-semibold);
+    color: var(--text-primary);
+    letter-spacing: 0.02em;
   }
 
   .header-spacer {
@@ -147,37 +153,24 @@
   .qr-container {
     width: 200px;
     height: 200px;
-    background: white;
+    background: var(--bg-card);
     border-radius: var(--radius-lg);
-    padding: var(--space-md);
-    box-shadow: var(--shadow-md);
-  }
-
-  .qr-placeholder {
-    width: 100%;
-    height: 100%;
+    border: 1px solid var(--border);
+    padding: var(--space-lg);
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(45deg, #f0f0f0 25%, transparent 25%),
-      linear-gradient(-45deg, #f0f0f0 25%, transparent 25%),
-      linear-gradient(45deg, transparent 75%, #f0f0f0 75%),
-      linear-gradient(-45deg, transparent 75%, #f0f0f0 75%);
-    background-size: 20px 20px;
-    background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
-    border-radius: var(--radius-sm);
   }
 
-  .shielded-badge {
-    display: flex;
-    align-items: center;
-    gap: var(--space-xs);
-    padding: var(--space-xs) var(--space-md);
-    background: rgba(191, 90, 242, 0.15);
-    color: var(--shielded);
-    border-radius: var(--radius-full);
+  .qr-placeholder {
+    color: var(--text-tertiary);
+    opacity: 0.5;
+  }
+
+  .address-type {
     font-size: var(--text-small);
-    font-weight: var(--weight-medium);
+    color: var(--text-tertiary);
+    letter-spacing: 0.02em;
   }
 
   .address-section {
@@ -221,5 +214,6 @@
   .info-text {
     font-size: var(--text-small);
     color: var(--text-tertiary);
+    line-height: 1.5;
   }
 </style>

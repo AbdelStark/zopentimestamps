@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { ArrowLeft, CheckCircle, Loader2 } from "lucide-svelte";
+  import { ArrowLeft, Check, Loader2 } from "lucide-svelte";
   import { send, sendPhase, sendAmount, sendAddress, sendMemo, sendTxid, sendError, canProceed } from "../lib/stores/send";
-  import { wallet, balance } from "../lib/stores/wallet";
+  import { balance } from "../lib/stores/wallet";
   import { ui } from "../lib/stores/ui";
   import { sendTransaction } from "../lib/utils/tauri";
   import { formatZec, parseZec, truncateAddress } from "../lib/utils/format";
@@ -45,7 +45,7 @@
       const amountZatoshis = parseZec($sendAmount);
       const result = await sendTransaction($sendAddress, amountZatoshis, $sendMemo || undefined);
       send.setTxid(result.txid);
-      ui.showToast("Transaction sent!", "success");
+      ui.showToast("Transaction sent", "success");
     } catch (e) {
       send.setError(String(e));
       ui.showToast(`Send failed: ${e}`, "error");
@@ -75,9 +75,9 @@
   {#if $sendPhase !== "complete"}
     <header class="send-header">
       <button class="back-button" onclick={handleBack}>
-        <ArrowLeft size={24} />
+        <ArrowLeft size={20} />
       </button>
-      <h1>Send ZEC</h1>
+      <h1>Send</h1>
       <div class="header-spacer"></div>
     </header>
   {/if}
@@ -87,7 +87,7 @@
       <!-- Input Phase -->
       <div class="input-phase animate-fade-in">
         <div class="balance-display">
-          <span class="balance-label">Available</span>
+          <span class="balance-label">Available Balance</span>
           <span class="balance-value">{formatZec($balance)} ZEC</span>
         </div>
 
@@ -106,14 +106,14 @@
 
           <Input
             label="Recipient Address"
-            placeholder="t1... or zs... or u1..."
+            placeholder="Enter address"
             value={$sendAddress}
             oninput={handleAddressInput}
           />
 
           <Input
             label="Memo (optional)"
-            placeholder="Add a note..."
+            placeholder="Add a note"
             value={$sendMemo}
             oninput={handleMemoInput}
           />
@@ -127,7 +127,7 @@
             disabled={!$canProceed}
             onclick={goToPreview}
           >
-            Review Transaction
+            Review
           </Button>
         </div>
       </div>
@@ -143,7 +143,7 @@
         <div class="preview-card">
           <div class="preview-row">
             <span class="preview-label">To</span>
-            <span class="preview-value">{truncateAddress($sendAddress, 10)}</span>
+            <span class="preview-value address">{truncateAddress($sendAddress, 10)}</span>
           </div>
           <div class="preview-divider"></div>
           <div class="preview-row">
@@ -170,12 +170,12 @@
 
         <div class="form-actions">
           <Button
-            variant="danger"
+            variant="primary"
             size="lg"
             fullWidth
             onclick={confirmSend}
           >
-            Confirm & Send
+            Confirm Send
           </Button>
           <Button
             variant="ghost"
@@ -192,19 +192,19 @@
       <!-- Sending Phase -->
       <div class="sending-phase animate-fade-in">
         <div class="sending-spinner">
-          <Loader2 size={48} class="spin" />
+          <Loader2 size={40} class="spin" />
         </div>
-        <h2>Sending ZEC</h2>
-        <p>Please wait while your transaction is being processed...</p>
+        <h2>Processing</h2>
+        <p>Please wait while your transaction is being sent...</p>
       </div>
 
     {:else if $sendPhase === "complete"}
       <!-- Complete Phase -->
       <div class="complete-phase animate-fade-in">
         <div class="success-icon">
-          <CheckCircle size={64} />
+          <Check size={32} strokeWidth={2.5} />
         </div>
-        <h2>Transaction Sent!</h2>
+        <h2>Sent</h2>
         <p class="txid">
           {truncateAddress($sendTxid || "", 12)}
         </p>
@@ -223,8 +223,14 @@
     {:else if $sendPhase === "error"}
       <!-- Error Phase -->
       <div class="error-phase animate-fade-in">
-        <div class="error-icon">❌</div>
-        <h2>Transaction Failed</h2>
+        <div class="error-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="15" y1="9" x2="9" y2="15"/>
+            <line x1="9" y1="9" x2="15" y2="15"/>
+          </svg>
+        </div>
+        <h2>Failed</h2>
         <p class="error-message">{$sendError}</p>
         <div class="form-actions">
           <Button
@@ -246,6 +252,7 @@
     min-height: 100%;
     display: flex;
     flex-direction: column;
+    background: var(--bg-primary);
   }
 
   .send-header {
@@ -264,19 +271,22 @@
     justify-content: center;
     background: none;
     border: none;
-    color: var(--text-primary);
+    color: var(--text-secondary);
     cursor: pointer;
     border-radius: var(--radius-md);
-    transition: background var(--transition-fast);
+    transition: all var(--transition-fast);
   }
 
   .back-button:hover {
+    color: var(--text-primary);
     background: var(--bg-card);
   }
 
   .send-header h1 {
-    font-size: var(--text-h3);
+    font-size: var(--text-body);
     font-weight: var(--weight-semibold);
+    color: var(--text-primary);
+    letter-spacing: 0.02em;
   }
 
   .header-spacer {
@@ -302,9 +312,10 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: var(--space-md);
+    padding: var(--space-md) var(--space-lg);
     background: var(--bg-card);
     border-radius: var(--radius-md);
+    border: 1px solid var(--border);
   }
 
   .balance-label {
@@ -316,6 +327,7 @@
     font-size: var(--text-body);
     font-weight: var(--weight-semibold);
     color: var(--text-primary);
+    font-family: var(--font-mono);
   }
 
   .form-section {
@@ -333,20 +345,22 @@
     right: var(--space-sm);
     top: 50%;
     transform: translateY(25%);
-    padding: var(--space-xs) var(--space-sm);
-    background: var(--accent-dim);
-    color: var(--accent);
-    border: none;
+    padding: var(--space-xs) var(--space-md);
+    background: var(--bg-elevated);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     font-size: var(--text-caption);
-    font-weight: var(--weight-semibold);
+    font-weight: var(--weight-medium);
     cursor: pointer;
-    transition: background var(--transition-fast);
+    transition: all var(--transition-fast);
+    letter-spacing: 0.05em;
   }
 
   .max-button:hover {
-    background: var(--accent);
+    background: var(--text-primary);
     color: var(--bg-primary);
+    border-color: var(--text-primary);
   }
 
   .form-actions {
@@ -373,18 +387,20 @@
     font-size: var(--text-display);
     font-weight: var(--weight-bold);
     color: var(--text-primary);
+    font-family: var(--font-mono);
   }
 
   .amount-currency {
-    font-size: var(--text-h2);
+    font-size: var(--text-h3);
     font-weight: var(--weight-medium);
-    color: var(--text-secondary);
+    color: var(--text-tertiary);
     margin-left: var(--space-sm);
   }
 
   .preview-card {
     background: var(--bg-card);
     border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
     padding: var(--space-lg);
   }
 
@@ -412,8 +428,13 @@
     word-break: break-all;
   }
 
+  .preview-value.address {
+    font-family: var(--font-mono);
+  }
+
   .preview-value.memo {
     font-style: italic;
+    color: var(--text-secondary);
   }
 
   .preview-divider {
@@ -434,7 +455,7 @@
   }
 
   .sending-spinner {
-    color: var(--accent);
+    color: var(--text-secondary);
   }
 
   .sending-spinner :global(.spin) {
@@ -442,11 +463,13 @@
   }
 
   .sending-phase h2 {
-    font-size: var(--text-h2);
+    font-size: var(--text-h3);
+    color: var(--text-primary);
   }
 
   .sending-phase p {
     color: var(--text-secondary);
+    font-size: var(--text-small);
   }
 
   /* Complete Phase */
@@ -461,20 +484,30 @@
   }
 
   .success-icon {
-    color: var(--success);
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-card);
+    border: 2px solid var(--text-secondary);
+    color: var(--text-primary);
   }
 
   .complete-phase h2 {
-    font-size: var(--text-h2);
+    font-size: var(--text-h3);
+    color: var(--text-primary);
   }
 
   .txid {
     font-family: var(--font-mono);
     font-size: var(--text-small);
-    color: var(--text-secondary);
+    color: var(--text-tertiary);
     background: var(--bg-card);
     padding: var(--space-sm) var(--space-md);
     border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
   }
 
   /* Error Phase */
@@ -489,16 +522,17 @@
   }
 
   .error-icon {
-    font-size: 4rem;
+    color: var(--text-tertiary);
   }
 
   .error-phase h2 {
-    font-size: var(--text-h2);
-    color: var(--error);
+    font-size: var(--text-h3);
+    color: var(--text-primary);
   }
 
   .error-message {
     color: var(--text-secondary);
     max-width: 80%;
+    font-size: var(--text-small);
   }
 </style>

@@ -1,38 +1,24 @@
 <script lang="ts">
-  import { ArrowUpRight, ArrowDownLeft, RefreshCw, MoreHorizontal } from "lucide-svelte";
+  import { ArrowUp, ArrowDown } from "lucide-svelte";
 
-  export let variant: "send" | "receive" | "swap" | "more" = "send";
-  export let label: string = "";
+  export let variant: "send" | "receive" = "send";
   export let onclick: () => void = () => {};
   export let disabled: boolean = false;
 
-  const icons = {
-    send: ArrowUpRight,
-    receive: ArrowDownLeft,
-    swap: RefreshCw,
-    more: MoreHorizontal,
+  const config = {
+    send: { icon: ArrowUp, label: "Send" },
+    receive: { icon: ArrowDown, label: "Receive" },
   };
 
-  const defaultLabels = {
-    send: "Send",
-    receive: "Receive",
-    swap: "Swap",
-    more: "More",
-  };
-
-  $: Icon = icons[variant];
-  $: displayLabel = label || defaultLabels[variant];
+  $: Icon = config[variant].icon;
+  $: label = config[variant].label;
 </script>
 
-<button
-  class="action-button action-{variant}"
-  {disabled}
-  {onclick}
->
+<button class="action-button" class:send={variant === "send"} class:receive={variant === "receive"} {disabled} {onclick}>
   <div class="action-icon">
-    <Icon size={24} strokeWidth={2.5} />
+    <Icon size={20} strokeWidth={2} />
   </div>
-  <span class="action-label">{displayLabel}</span>
+  <span class="action-label">{label}</span>
 </button>
 
 <style>
@@ -41,7 +27,7 @@
     flex-direction: column;
     align-items: center;
     gap: var(--space-sm);
-    padding: var(--space-md);
+    padding: var(--space-md) var(--space-xl);
     background: none;
     border: none;
     cursor: pointer;
@@ -49,54 +35,44 @@
   }
 
   .action-button:disabled {
-    opacity: 0.5;
+    opacity: 0.4;
     cursor: not-allowed;
   }
 
   .action-icon {
-    width: 56px;
-    height: 56px;
+    width: 48px;
+    height: 48px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
     transition: all var(--transition-fast);
   }
 
   .action-button:not(:disabled):hover .action-icon {
-    transform: scale(1.05);
+    background: var(--bg-elevated);
+    border-color: var(--border-light);
+    transform: translateY(-2px);
   }
 
   .action-button:not(:disabled):active .action-icon {
-    transform: scale(0.95);
+    transform: translateY(0);
   }
 
-  .action-send .action-icon {
-    background: var(--send);
-    color: white;
-    box-shadow: 0 4px 16px rgba(255, 69, 58, 0.4);
+  .action-button.send .action-icon {
+    color: var(--text-primary);
   }
 
-  .action-receive .action-icon {
-    background: var(--receive);
-    color: white;
-    box-shadow: 0 4px 16px rgba(48, 209, 88, 0.4);
-  }
-
-  .action-swap .action-icon {
-    background: var(--accent);
-    color: var(--bg-primary);
-    box-shadow: 0 4px 16px var(--accent-glow);
-  }
-
-  .action-more .action-icon {
-    background: var(--bg-card);
-    color: var(--text-secondary);
+  .action-button.receive .action-icon {
+    color: var(--text-primary);
   }
 
   .action-label {
     font-size: var(--text-small);
     font-weight: var(--weight-medium);
-    color: var(--text-primary);
+    color: var(--text-secondary);
   }
 </style>

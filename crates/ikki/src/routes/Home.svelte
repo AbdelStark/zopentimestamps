@@ -1,8 +1,7 @@
 <script lang="ts">
-  import { onMount } from "svelte";
   import { wallet, balance, address, isSyncing } from "../lib/stores/wallet";
   import { ui } from "../lib/stores/ui";
-  import { syncWallet, getBalance } from "../lib/utils/tauri";
+  import { syncWallet } from "../lib/utils/tauri";
   import AccountCard from "../lib/components/AccountCard.svelte";
   import ActionButton from "../lib/components/ActionButton.svelte";
   import TransactionItem from "../lib/components/TransactionItem.svelte";
@@ -19,7 +18,7 @@
         shielded: result.balance,
         transparent: 0,
       });
-      ui.showToast("Wallet synced!", "success");
+      ui.showToast("Wallet synced", "success");
     } catch (e) {
       ui.showToast(`Sync failed: ${e}`, "error");
     } finally {
@@ -53,9 +52,13 @@
 
       {#if recentTransactions.length === 0}
         <div class="empty-state">
-          <div class="empty-icon">📭</div>
+          <div class="empty-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+            </svg>
+          </div>
           <p class="empty-title">No transactions yet</p>
-          <p class="empty-subtitle">Send or receive ZEC to see your activity</p>
+          <p class="empty-subtitle">Your activity will appear here</p>
         </div>
       {:else}
         <div class="transaction-list">
@@ -94,7 +97,7 @@
   .actions {
     display: flex;
     justify-content: center;
-    gap: var(--space-xl);
+    gap: var(--space-2xl);
   }
 
   .recent-section {
@@ -107,33 +110,38 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+    padding: 0 var(--space-xs);
   }
 
   .section-header h3 {
-    font-size: var(--text-body);
-    font-weight: var(--weight-semibold);
-    color: var(--text-primary);
+    font-size: var(--text-small);
+    font-weight: var(--weight-medium);
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
   }
 
   .see-all {
     background: none;
     border: none;
-    color: var(--accent);
+    color: var(--text-secondary);
     font-size: var(--text-small);
     font-weight: var(--weight-medium);
     cursor: pointer;
     padding: var(--space-xs) var(--space-sm);
     border-radius: var(--radius-sm);
-    transition: background var(--transition-fast);
+    transition: all var(--transition-fast);
   }
 
   .see-all:hover {
-    background: var(--accent-dim);
+    color: var(--text-primary);
+    background: var(--bg-card);
   }
 
   .transaction-list {
     background: var(--bg-card);
     border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
     overflow: hidden;
   }
 
@@ -141,24 +149,28 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: var(--space-2xl) var(--space-lg);
+    padding: var(--space-3xl) var(--space-lg);
     text-align: center;
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
   }
 
   .empty-icon {
-    font-size: 3rem;
-    margin-bottom: var(--space-md);
+    color: var(--text-tertiary);
+    margin-bottom: var(--space-lg);
+    opacity: 0.5;
   }
 
   .empty-title {
     font-size: var(--text-body);
-    font-weight: var(--weight-semibold);
+    font-weight: var(--weight-medium);
     color: var(--text-primary);
     margin-bottom: var(--space-xs);
   }
 
   .empty-subtitle {
     font-size: var(--text-small);
-    color: var(--text-secondary);
+    color: var(--text-tertiary);
   }
 </style>
