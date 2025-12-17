@@ -56,13 +56,13 @@ fn store_wallet_config(seed: &str, birthday_height: Option<u64>) -> Result<(), S
         birthday_height,
     };
     let json = serde_json::to_string_pretty(&config)
-        .map_err(|e| format!("Failed to serialize config: {}", e))?;
+        .map_err(|e| format!("Failed to serialize config: {e}"))?;
 
     let path = get_seed_path()?;
-    let mut file = std::fs::File::create(&path)
-        .map_err(|e| format!("Failed to create config file: {}", e))?;
+    let mut file =
+        std::fs::File::create(&path).map_err(|e| format!("Failed to create config file: {e}"))?;
     file.write_all(json.as_bytes())
-        .map_err(|e| format!("Failed to write config: {}", e))?;
+        .map_err(|e| format!("Failed to write config: {e}"))?;
 
     // Set restrictive permissions on Unix
     #[cfg(unix)]
@@ -70,7 +70,7 @@ fn store_wallet_config(seed: &str, birthday_height: Option<u64>) -> Result<(), S
         use std::os::unix::fs::PermissionsExt;
         let permissions = std::fs::Permissions::from_mode(0o600);
         std::fs::set_permissions(&path, permissions)
-            .map_err(|e| format!("Failed to set permissions: {}", e))?;
+            .map_err(|e| format!("Failed to set permissions: {e}"))?;
     }
 
     Ok(())
@@ -83,14 +83,14 @@ fn load_wallet_config() -> Result<Option<StoredWalletConfig>, String> {
         return Ok(None);
     }
 
-    let mut file = std::fs::File::open(&path)
-        .map_err(|e| format!("Failed to open config file: {}", e))?;
+    let mut file =
+        std::fs::File::open(&path).map_err(|e| format!("Failed to open config file: {e}"))?;
     let mut contents = String::new();
     file.read_to_string(&mut contents)
-        .map_err(|e| format!("Failed to read config: {}", e))?;
+        .map_err(|e| format!("Failed to read config: {e}"))?;
 
-    let config: StoredWalletConfig = serde_json::from_str(&contents)
-        .map_err(|e| format!("Failed to parse config: {}", e))?;
+    let config: StoredWalletConfig =
+        serde_json::from_str(&contents).map_err(|e| format!("Failed to parse config: {e}"))?;
 
     Ok(Some(config))
 }
@@ -99,8 +99,7 @@ fn load_wallet_config() -> Result<Option<StoredWalletConfig>, String> {
 fn delete_wallet_config() -> Result<(), String> {
     let path = get_seed_path()?;
     if path.exists() {
-        std::fs::remove_file(&path)
-            .map_err(|e| format!("Failed to delete config: {}", e))?;
+        std::fs::remove_file(&path).map_err(|e| format!("Failed to delete config: {e}"))?;
     }
     Ok(())
 }
@@ -140,7 +139,7 @@ pub async fn reset_wallet(state: State<'_, AppState>) -> Result<(), String> {
     let wallet_db = data_dir.join("wallet.db");
     if wallet_db.exists() {
         std::fs::remove_file(&wallet_db)
-            .map_err(|e| format!("Failed to delete wallet.db: {}", e))?;
+            .map_err(|e| format!("Failed to delete wallet.db: {e}"))?;
     }
 
     // Remove any other wallet-related files
@@ -166,27 +165,27 @@ pub async fn init_wallet(
     birthday_height: Option<u64>,
 ) -> Result<WalletInfo, String> {
     let config = ZcashConfig::from_seed_with_birthday(&seed, birthday_height)
-        .map_err(|e| format!("Invalid seed phrase: {}", e))?;
+        .map_err(|e| format!("Invalid seed phrase: {e}"))?;
 
     let mut wallet = ZotsWallet::new(config)
         .await
-        .map_err(|e| format!("Failed to create wallet: {}", e))?;
+        .map_err(|e| format!("Failed to create wallet: {e}"))?;
 
     wallet
         .init_account()
         .await
-        .map_err(|e| format!("Failed to initialize account: {}", e))?;
+        .map_err(|e| format!("Failed to initialize account: {e}"))?;
 
     let address = wallet
         .get_address()
-        .map_err(|e| format!("Failed to get address: {}", e))?;
+        .map_err(|e| format!("Failed to get address: {e}"))?;
 
     let balance = wallet.get_balance().unwrap_or(0);
 
     let block_height = wallet
         .get_block_height()
         .await
-        .map_err(|e| format!("Failed to get block height: {}", e))?;
+        .map_err(|e| format!("Failed to get block height: {e}"))?;
 
     // Store seed for persistence
     store_wallet_config(&seed, birthday_height)?;
@@ -210,28 +209,28 @@ pub async fn load_wallet(
     birthday_height: Option<u64>,
 ) -> Result<WalletInfo, String> {
     let config = ZcashConfig::from_seed_with_birthday(&seed, birthday_height)
-        .map_err(|e| format!("Invalid seed phrase: {}", e))?;
+        .map_err(|e| format!("Invalid seed phrase: {e}"))?;
 
     let mut wallet = ZotsWallet::new(config)
         .await
-        .map_err(|e| format!("Failed to load wallet: {}", e))?;
+        .map_err(|e| format!("Failed to load wallet: {e}"))?;
 
     // Initialize account to ensure we have an address
     wallet
         .init_account()
         .await
-        .map_err(|e| format!("Failed to initialize account: {}", e))?;
+        .map_err(|e| format!("Failed to initialize account: {e}"))?;
 
     let address = wallet
         .get_address()
-        .map_err(|e| format!("Failed to get address: {}", e))?;
+        .map_err(|e| format!("Failed to get address: {e}"))?;
 
     let balance = wallet.get_balance().unwrap_or(0);
 
     let block_height = wallet
         .get_block_height()
         .await
-        .map_err(|e| format!("Failed to get block height: {}", e))?;
+        .map_err(|e| format!("Failed to get block height: {e}"))?;
 
     // Store seed for persistence
     store_wallet_config(&seed, birthday_height)?;
@@ -264,23 +263,24 @@ pub async fn auto_load_wallet(state: State<'_, AppState>) -> Result<Option<Walle
     }
 
     // Load wallet with stored config
-    let config = ZcashConfig::from_seed_with_birthday(&stored_config.seed, stored_config.birthday_height)
-        .map_err(|e| format!("Invalid stored seed: {}", e))?;
+    let config =
+        ZcashConfig::from_seed_with_birthday(&stored_config.seed, stored_config.birthday_height)
+            .map_err(|e| format!("Invalid stored seed: {e}"))?;
 
     let mut wallet = ZotsWallet::new(config)
         .await
-        .map_err(|e| format!("Failed to load wallet: {}", e))?;
+        .map_err(|e| format!("Failed to load wallet: {e}"))?;
 
     let address = wallet
         .get_address()
-        .map_err(|e| format!("Failed to get address: {}", e))?;
+        .map_err(|e| format!("Failed to get address: {e}"))?;
 
     let balance = wallet.get_balance().unwrap_or(0);
 
     let block_height = wallet
         .get_block_height()
         .await
-        .map_err(|e| format!("Failed to get block height: {}", e))?;
+        .map_err(|e| format!("Failed to get block height: {e}"))?;
 
     // Store wallet in state
     let mut wallet_lock = state.wallet.lock().await;
@@ -297,13 +297,11 @@ pub async fn auto_load_wallet(state: State<'_, AppState>) -> Result<Option<Walle
 #[tauri::command]
 pub async fn get_balance(state: State<'_, AppState>) -> Result<BalanceInfo, String> {
     let wallet_lock = state.wallet.lock().await;
-    let wallet = wallet_lock
-        .as_ref()
-        .ok_or("Wallet not initialized")?;
+    let wallet = wallet_lock.as_ref().ok_or("Wallet not initialized")?;
 
     let breakdown = wallet
         .get_balance_breakdown()
-        .map_err(|e| format!("Failed to get balance: {}", e))?;
+        .map_err(|e| format!("Failed to get balance: {e}"))?;
 
     Ok(BalanceInfo {
         total: breakdown.sapling + breakdown.orchard + breakdown.transparent,
@@ -316,33 +314,29 @@ pub async fn get_balance(state: State<'_, AppState>) -> Result<BalanceInfo, Stri
 #[tauri::command]
 pub async fn get_address(state: State<'_, AppState>) -> Result<String, String> {
     let wallet_lock = state.wallet.lock().await;
-    let wallet = wallet_lock
-        .as_ref()
-        .ok_or("Wallet not initialized")?;
+    let wallet = wallet_lock.as_ref().ok_or("Wallet not initialized")?;
 
     wallet
         .get_address()
-        .map_err(|e| format!("Failed to get address: {}", e))
+        .map_err(|e| format!("Failed to get address: {e}"))
 }
 
 /// Sync wallet with blockchain
 #[tauri::command]
 pub async fn sync_wallet(state: State<'_, AppState>) -> Result<SyncResult, String> {
     let mut wallet_lock = state.wallet.lock().await;
-    let wallet = wallet_lock
-        .as_mut()
-        .ok_or("Wallet not initialized")?;
+    let wallet = wallet_lock.as_mut().ok_or("Wallet not initialized")?;
 
     wallet
         .sync()
         .await
-        .map_err(|e| format!("Sync failed: {}", e))?;
+        .map_err(|e| format!("Sync failed: {e}"))?;
 
     let balance = wallet.get_balance().unwrap_or(0);
     let block_height = wallet
         .get_block_height()
         .await
-        .map_err(|e| format!("Failed to get block height: {}", e))?;
+        .map_err(|e| format!("Failed to get block height: {e}"))?;
 
     Ok(SyncResult {
         block_height,

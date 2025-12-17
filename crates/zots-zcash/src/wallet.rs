@@ -705,10 +705,8 @@ impl ZotsWallet {
         let db_path = self.config.wallet_db_path();
 
         // Open a read-only connection to query transaction history
-        let conn = Connection::open_with_flags(
-            &db_path,
-            rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY,
-        )?;
+        let conn =
+            Connection::open_with_flags(&db_path, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY)?;
 
         // Use the v_transactions view which already calculates everything we need
         let mut stmt = conn.prepare(
@@ -722,7 +720,7 @@ impl ZotsWallet {
             FROM v_transactions
             WHERE mined_height IS NOT NULL
             ORDER BY mined_height DESC
-            LIMIT ?"
+            LIMIT ?",
         )?;
 
         let rows = stmt.query_map([limit as i64], |row| {
@@ -732,36 +730,41 @@ impl ZotsWallet {
             let block_time: Option<u32> = row.get(3)?;
             let sent_note_count: i64 = row.get(4)?;
             let is_shielding: bool = row.get(5)?;
-            Ok((txid_bytes, balance_delta, block_time, sent_note_count, is_shielding))
+            Ok((
+                txid_bytes,
+                balance_delta,
+                block_time,
+                sent_note_count,
+                is_shielding,
+            ))
         })?;
 
         let mut transactions = Vec::new();
-        for row_result in rows {
-            if let Ok((txid_bytes, balance_delta, block_time, sent_note_count, is_shielding)) = row_result {
-                let mut txid_arr = [0u8; 32];
-                if txid_bytes.len() == 32 {
-                    txid_arr.copy_from_slice(&txid_bytes);
-                    txid_arr.reverse(); // Reverse for display format
-                }
-                // Manual hex encoding
-                let txid: String = txid_arr.iter().map(|b| format!("{:02x}", b)).collect();
-
-                let timestamp = block_time.map(|t| t as u64).unwrap_or(0);
-
-                // Determine if this is a sent transaction:
-                // - sent_note_count > 0 means we created outputs for others
-                // - is_shielding means we're shielding our own funds (not really "sent")
-                // - balance_delta < 0 means we spent more than we received (sent or fee)
-                let is_sent = sent_note_count > 0 && !is_shielding;
-
-                transactions.push(TransactionRecord {
-                    txid,
-                    amount: balance_delta,
-                    timestamp,
-                    is_sent,
-                    memo: None,
-                });
+        for (txid_bytes, balance_delta, block_time, sent_note_count, is_shielding) in rows.flatten()
+        {
+            let mut txid_arr = [0u8; 32];
+            if txid_bytes.len() == 32 {
+                txid_arr.copy_from_slice(&txid_bytes);
+                txid_arr.reverse(); // Reverse for display format
             }
+            // Manual hex encoding
+            let txid: String = txid_arr.iter().map(|b| format!("{b:02x}")).collect();
+
+            let timestamp = block_time.map(|t| t as u64).unwrap_or(0);
+
+            // Determine if this is a sent transaction:
+            // - sent_note_count > 0 means we created outputs for others
+            // - is_shielding means we're shielding our own funds (not really "sent")
+            // - balance_delta < 0 means we spent more than we received (sent or fee)
+            let is_sent = sent_note_count > 0 && !is_shielding;
+
+            transactions.push(TransactionRecord {
+                txid,
+                amount: balance_delta,
+                timestamp,
+                is_sent,
+                memo: None,
+            });
         }
 
         Ok(transactions)

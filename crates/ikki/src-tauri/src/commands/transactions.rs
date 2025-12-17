@@ -53,16 +53,14 @@ pub async fn send_transaction(
     memo: Option<String>,
 ) -> Result<SendResult, String> {
     let mut wallet_lock = state.wallet.lock().await;
-    let wallet = wallet_lock
-        .as_mut()
-        .ok_or("Wallet not initialized")?;
+    let wallet = wallet_lock.as_mut().ok_or("Wallet not initialized")?;
 
     let memo_bytes = memo.map(|m| m.into_bytes());
 
     let result = wallet
         .send_to_address(&to_address, amount, memo_bytes)
         .await
-        .map_err(|e| format!("Send failed: {}", e))?;
+        .map_err(|e| format!("Send failed: {e}"))?;
 
     Ok(SendResult {
         txid: result.txid,
@@ -75,14 +73,12 @@ pub async fn send_transaction(
 #[tauri::command]
 pub async fn get_transactions(state: State<'_, AppState>) -> Result<Vec<Transaction>, String> {
     let wallet_lock = state.wallet.lock().await;
-    let wallet = wallet_lock
-        .as_ref()
-        .ok_or("Wallet not initialized")?;
+    let wallet = wallet_lock.as_ref().ok_or("Wallet not initialized")?;
 
     // Get recent transactions from the wallet
     let records = wallet
         .get_recent_transactions(50)
-        .map_err(|e| format!("Failed to get transactions: {}", e))?;
+        .map_err(|e| format!("Failed to get transactions: {e}"))?;
 
     // Convert to frontend format
     let transactions: Vec<Transaction> = records
