@@ -5,18 +5,22 @@
   import { generateSeed, initWallet, loadWallet } from "../lib/utils/tauri";
   import { copyToClipboard } from "../lib/utils/format";
   import Button from "../lib/components/Button.svelte";
+  import Input from "../lib/components/Input.svelte";
 
   type Step = "welcome" | "choice" | "create" | "import" | "confirm" | "loading" | "complete";
 
   let currentStep: Step = "welcome";
   let seedPhrase = "";
   let inputSeed = "";
+  let inputBirthday = "";
   let seedConfirmed = false;
   let showSeed = true;
   let error = "";
+  let loadingMessage = "Setting up your wallet...";
 
   async function handleCreateWallet() {
     currentStep = "loading";
+    loadingMessage = "Generating seed phrase...";
     try {
       seedPhrase = await generateSeed();
       currentStep = "create";
@@ -38,7 +42,9 @@
   async function handleSeedConfirmed() {
     seedConfirmed = true;
     currentStep = "loading";
+    loadingMessage = "Creating wallet...";
     try {
+      // New wallet - use current block height as birthday
       const walletInfo = await initWallet(seedPhrase);
       wallet.setInfo({
         address: walletInfo.address,
@@ -60,9 +66,21 @@
       return;
     }
 
+    // Parse birthday height if provided
+    let birthdayHeight: number | undefined;
+    if (inputBirthday.trim()) {
+      const parsed = parseInt(inputBirthday.trim(), 10);
+      if (isNaN(parsed) || parsed < 0) {
+        ui.showToast("Invalid birthday height - must be a positive number", "error");
+        return;
+      }
+      birthdayHeight = parsed;
+    }
+
     currentStep = "loading";
+    loadingMessage = "Importing wallet...";
     try {
-      const walletInfo = await loadWallet(words.join(" "));
+      const walletInfo = await loadWallet(words.join(" "), birthdayHeight);
       wallet.setInfo({
         address: walletInfo.address,
         balance: walletInfo.balance,
@@ -96,6 +114,11 @@
   function handleSeedInput(e: Event) {
     const target = e.target as HTMLTextAreaElement;
     inputSeed = target.value;
+  }
+
+  function handleBirthdayInput(e: Event) {
+    const target = e.target as HTMLInputElement;
+    inputBirthday = target.value;
   }
 
   $: wordCount = inputSeed.trim().split(/\s+/).filter(w => w.length > 0).length;
@@ -206,23 +229,40 @@
 
       <div class="screen-content">
         <h1>Import wallet</h1>
-        <p class="subtitle">Enter your 24-word recovery phrase to restore your wallet.</p>
+        <p class="subtitle">Enter your 24-word recovery phrase and optional birthday height to restore your wallet.</p>
 
-        <div class="seed-input-container">
-          <textarea
-            class="seed-input"
-            placeholder="Enter your recovery phrase..."
-            value={inputSeed}
-            oninput={handleSeedInput}
-            rows={6}
-            spellcheck="false"
-            autocomplete="off"
-            autocorrect="off"
-            autocapitalize="off"
-          ></textarea>
-          <span class="word-counter" class:valid={wordCount === 24}>
-            {wordCount}/24 words
-          </span>
+        <div class="import-form">
+          <div class="seed-input-container">
+            <label class="input-label">Recovery Phrase</label>
+            <textarea
+              class="seed-input"
+              placeholder="Enter your 24 words separated by spaces..."
+              value={inputSeed}
+              oninput={handleSeedInput}
+              rows={5}
+              spellcheck="false"
+              autocomplete="off"
+              autocorrect="off"
+              autocapitalize="off"
+            ></textarea>
+            <span class="word-counter" class:valid={wordCount === 24}>
+              {wordCount}/24 words
+            </span>
+          </div>
+
+          <div class="birthday-input-container">
+            <Input
+              type="text"
+              inputmode="numeric"
+              label="Birthday Height (optional)"
+              placeholder="e.g., 2000000"
+              value={inputBirthday}
+              oninput={handleBirthdayInput}
+            />
+            <p class="birthday-hint">
+              The block height when your wallet was created. Using the correct birthday speeds up syncing significantly.
+            </p>
+          </div>
         </div>
       </div>
 
@@ -277,7 +317,7 @@
     <div class="screen center animate-fade-in">
       <div class="loading-content">
         <Loader2 size={32} class="spin" />
-        <p>Setting up your wallet...</p>
+        <p>{loadingMessage}</p>
       </div>
     </div>
 
@@ -537,7 +577,21 @@
     color: var(--text-primary);
   }
 
-  /* Seed Input */
+  /* Import Form */
+  .import-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xl);
+  }
+
+  .input-label {
+    display: block;
+    font-size: var(--text-small);
+    font-weight: var(--weight-medium);
+    color: var(--text-secondary);
+    margin-bottom: var(--space-sm);
+  }
+
   .seed-input-container {
     display: flex;
     flex-direction: column;
@@ -546,7 +600,7 @@
 
   .seed-input {
     width: 100%;
-    min-height: 160px;
+    min-height: 140px;
     padding: var(--space-md);
     background: var(--bg-card);
     border: 1px solid var(--border);
@@ -575,6 +629,19 @@
 
   .word-counter.valid {
     color: var(--success);
+  }
+
+  .birthday-input-container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+  }
+
+  .birthday-hint {
+    font-size: var(--text-caption);
+    color: var(--text-tertiary);
+    line-height: 1.5;
+    margin: 0;
   }
 
   /* Confirm */

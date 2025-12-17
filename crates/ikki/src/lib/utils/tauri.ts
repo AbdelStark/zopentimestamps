@@ -44,12 +44,28 @@ export async function generateSeed(): Promise<string> {
   return invoke<string>("generate_seed");
 }
 
-export async function initWallet(seed: string): Promise<WalletInfo> {
-  return invoke<WalletInfo>("init_wallet", { seed });
+export async function initWallet(
+  seed: string,
+  birthdayHeight?: number
+): Promise<WalletInfo> {
+  return invoke<WalletInfo>("init_wallet", {
+    seed,
+    birthdayHeight: birthdayHeight ?? null,
+  });
 }
 
-export async function loadWallet(seed: string): Promise<WalletInfo> {
-  return invoke<WalletInfo>("load_wallet", { seed });
+export async function loadWallet(
+  seed: string,
+  birthdayHeight?: number
+): Promise<WalletInfo> {
+  return invoke<WalletInfo>("load_wallet", {
+    seed,
+    birthdayHeight: birthdayHeight ?? null,
+  });
+}
+
+export async function resetWallet(): Promise<void> {
+  return invoke<void>("reset_wallet");
 }
 
 export async function getBalance(): Promise<BalanceInfo> {

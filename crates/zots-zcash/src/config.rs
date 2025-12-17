@@ -101,6 +101,18 @@ impl ZcashConfig {
 
     /// Create configuration from a seed phrase with defaults
     pub fn from_seed(seed_phrase: &str) -> anyhow::Result<Self> {
+        Self::from_seed_with_birthday(seed_phrase, None)
+    }
+
+    /// Create configuration from a seed phrase with optional birthday height
+    ///
+    /// Birthday height is the block height when the wallet was created.
+    /// Using the correct birthday significantly speeds up initial sync.
+    /// If not provided, defaults to 3717528 (recent testnet block).
+    pub fn from_seed_with_birthday(
+        seed_phrase: &str,
+        birthday_height: Option<u64>,
+    ) -> anyhow::Result<Self> {
         // Validate seed phrase (basic check)
         let words: Vec<&str> = seed_phrase.split_whitespace().collect();
         if words.len() != 24 {
@@ -113,7 +125,7 @@ impl ZcashConfig {
 
         Ok(Self {
             seed_phrase: seed_phrase.to_string(),
-            birthday_height: 3717528,
+            birthday_height: birthday_height.unwrap_or(3717528),
             lightwalletd_url: "https://testnet.zec.rocks:443".to_string(),
             data_dir,
             network: Network::Testnet,

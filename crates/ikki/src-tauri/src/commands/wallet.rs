@@ -28,13 +28,18 @@ pub struct SyncResult {
     pub balance: u64,
 }
 
-/// Check if a wallet exists
-#[tauri::command]
-pub async fn check_wallet_exists() -> Result<bool, String> {
+/// Get wallet data directory path
+fn get_data_dir() -> Result<std::path::PathBuf, String> {
     let data_dir = dirs::home_dir()
         .ok_or("Could not find home directory")?
         .join(".zopentimestamps");
+    Ok(data_dir)
+}
 
+/// Check if a wallet exists
+#[tauri::command]
+pub async fn check_wallet_exists() -> Result<bool, String> {
+    let data_dir = get_data_dir()?;
     let wallet_db = data_dir.join("wallet.db");
     Ok(wallet_db.exists())
 }
@@ -48,10 +53,44 @@ pub async fn generate_seed() -> Result<String, String> {
     Ok(mnemonic.phrase().to_string())
 }
 
-/// Initialize wallet with seed phrase
+/// Delete all wallet data (reset wallet)
 #[tauri::command]
-pub async fn init_wallet(state: State<'_, AppState>, seed: String) -> Result<WalletInfo, String> {
-    let config = ZcashConfig::from_seed(&seed)
+pub async fn reset_wallet(state: State<'_, AppState>) -> Result<(), String> {
+    // Clear wallet from state first
+    {
+        let mut wallet_lock = state.wallet.lock().await;
+        *wallet_lock = None;
+    }
+
+    let data_dir = get_data_dir()?;
+
+    // Remove wallet database
+    let wallet_db = data_dir.join("wallet.db");
+    if wallet_db.exists() {
+        std::fs::remove_file(&wallet_db)
+            .map_err(|e| format!("Failed to delete wallet.db: {}", e))?;
+    }
+
+    // Remove any other wallet-related files
+    let files_to_remove = ["wallet.db-shm", "wallet.db-wal", "wallet_cache.db"];
+    for file in files_to_remove {
+        let path = data_dir.join(file);
+        if path.exists() {
+            let _ = std::fs::remove_file(&path);
+        }
+    }
+
+    Ok(())
+}
+
+/// Initialize wallet with seed phrase (new wallet)
+#[tauri::command]
+pub async fn init_wallet(
+    state: State<'_, AppState>,
+    seed: String,
+    birthday_height: Option<u64>,
+) -> Result<WalletInfo, String> {
+    let config = ZcashConfig::from_seed_with_birthday(&seed, birthday_height)
         .map_err(|e| format!("Invalid seed phrase: {}", e))?;
 
     let mut wallet = ZotsWallet::new(config)
@@ -85,15 +124,25 @@ pub async fn init_wallet(state: State<'_, AppState>, seed: String) -> Result<Wal
     })
 }
 
-/// Load existing wallet
+/// Load existing wallet (import)
 #[tauri::command]
-pub async fn load_wallet(state: State<'_, AppState>, seed: String) -> Result<WalletInfo, String> {
-    let config = ZcashConfig::from_seed(&seed)
+pub async fn load_wallet(
+    state: State<'_, AppState>,
+    seed: String,
+    birthday_height: Option<u64>,
+) -> Result<WalletInfo, String> {
+    let config = ZcashConfig::from_seed_with_birthday(&seed, birthday_height)
         .map_err(|e| format!("Invalid seed phrase: {}", e))?;
 
     let mut wallet = ZotsWallet::new(config)
         .await
         .map_err(|e| format!("Failed to load wallet: {}", e))?;
+
+    // Initialize account to ensure we have an address
+    wallet
+        .init_account()
+        .await
+        .map_err(|e| format!("Failed to initialize account: {}", e))?;
 
     let address = wallet
         .get_address()
