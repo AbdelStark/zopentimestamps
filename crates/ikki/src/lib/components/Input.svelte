@@ -12,18 +12,20 @@
 
 <div class="input-wrapper" class:has-error={error}>
   {#if label}
-    <span class="input-label">{label}</span>
+    <label class="input-label">{label}</label>
   {/if}
-  <input
-    class="input"
-    {type}
-    {value}
-    {placeholder}
-    {disabled}
-    {readonly}
-    {inputmode}
-    {oninput}
-  />
+  <div class="input-container">
+    <input
+      class="input"
+      {type}
+      {value}
+      {placeholder}
+      {disabled}
+      {readonly}
+      {inputmode}
+      {oninput}
+    />
+  </div>
   {#if error}
     <span class="input-error">{error}</span>
   {/if}
@@ -33,18 +35,23 @@
   .input-wrapper {
     display: flex;
     flex-direction: column;
-    gap: var(--space-sm);
+    gap: var(--space-2);
   }
 
   .input-label {
     font-size: var(--text-small);
     font-weight: var(--weight-medium);
     color: var(--text-secondary);
+    letter-spacing: 0.01em;
+  }
+
+  .input-container {
+    position: relative;
   }
 
   .input {
     width: 100%;
-    padding: var(--space-md);
+    padding: var(--space-3) var(--space-4);
     background: var(--bg-input);
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
@@ -52,7 +59,8 @@
     font-family: var(--font-family);
     font-size: var(--text-body);
     transition: all var(--transition-fast);
-    height: 48px;
+    height: 50px;
+    letter-spacing: 0.01em;
   }
 
   .input::placeholder {
@@ -72,14 +80,20 @@
 
   .input:read-only {
     background: var(--bg-card);
+    cursor: default;
   }
 
   .has-error .input {
     border-color: var(--error);
   }
 
+  .has-error .input:focus {
+    border-color: var(--error);
+  }
+
   .input-error {
-    font-size: var(--text-small);
+    font-size: var(--text-caption);
     color: var(--error);
+    letter-spacing: 0.01em;
   }
 </style>

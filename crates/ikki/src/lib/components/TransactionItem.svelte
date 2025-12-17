@@ -19,18 +19,24 @@
 
   $: isOutgoing = txType === "sent" || txType === "shielding";
   $: displayAmount = Math.abs(amount);
-  $: subtitle = address ? truncateAddress(address, 6) : memo ? (memo.length > 20 ? memo.slice(0, 20) + "..." : memo) : formatRelativeTime(timestamp);
+  $: subtitle = address
+    ? truncateAddress(address, 6)
+    : memo
+      ? memo.length > 24
+        ? memo.slice(0, 24) + "..."
+        : memo
+      : formatRelativeTime(timestamp);
 
   // Silence unused warning
   $: void txid;
 </script>
 
 <button class="transaction-item">
-  <div class="tx-icon" class:outgoing={isOutgoing}>
+  <div class="tx-icon" class:outgoing={isOutgoing} class:incoming={!isOutgoing}>
     {#if isOutgoing}
-      <ArrowUpRight size={16} strokeWidth={2} />
+      <ArrowUpRight size={16} strokeWidth={2.25} />
     {:else}
-      <ArrowDownLeft size={16} strokeWidth={2} />
+      <ArrowDownLeft size={16} strokeWidth={2.25} />
     {/if}
   </div>
 
@@ -40,7 +46,7 @@
   </div>
 
   <div class="tx-amount-section">
-    <span class="tx-amount" class:outgoing={isOutgoing}>
+    <span class="tx-amount" class:outgoing={isOutgoing} class:incoming={!isOutgoing}>
       {isOutgoing ? "-" : "+"}{formatZec(displayAmount)}
     </span>
     {#if status === "pending"}
@@ -55,34 +61,44 @@
   .transaction-item {
     display: flex;
     align-items: center;
-    gap: var(--space-md);
-    padding: var(--space-md);
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
     background: none;
     border: none;
     cursor: pointer;
     width: 100%;
     text-align: left;
     transition: background var(--transition-fast);
+    -webkit-tap-highlight-color: transparent;
   }
 
   .transaction-item:hover {
     background: var(--bg-hover);
   }
 
+  .transaction-item:active {
+    background: var(--bg-elevated);
+  }
+
   .tx-icon {
-    width: 36px;
-    height: 36px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    background: var(--bg-elevated);
-    color: var(--text-secondary);
+    transition: all var(--transition-fast);
   }
 
   .tx-icon.outgoing {
-    color: var(--text-secondary);
+    background: var(--send-dim);
+    color: var(--send);
+  }
+
+  .tx-icon.incoming {
+    background: var(--receive-dim);
+    color: var(--receive);
   }
 
   .tx-info {
@@ -97,14 +113,16 @@
     font-size: var(--text-body);
     font-weight: var(--weight-medium);
     color: var(--text-primary);
+    letter-spacing: 0.01em;
   }
 
   .tx-subtitle {
-    font-size: var(--text-small);
+    font-size: var(--text-caption);
     color: var(--text-tertiary);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    letter-spacing: 0.01em;
   }
 
   .tx-amount-section {
@@ -116,20 +134,27 @@
 
   .tx-amount {
     font-size: var(--text-body);
-    font-weight: var(--weight-medium);
+    font-weight: var(--weight-semibold);
     font-family: var(--font-mono);
-    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
   }
 
   .tx-amount.outgoing {
     color: var(--text-secondary);
   }
 
+  .tx-amount.incoming {
+    color: var(--receive);
+  }
+
   .tx-status {
-    font-size: var(--text-caption);
-    font-weight: var(--weight-medium);
-    padding: 2px var(--space-sm);
+    font-size: 10px;
+    font-weight: var(--weight-semibold);
+    padding: 2px 6px;
     border-radius: var(--radius-xs);
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
   }
 
   .tx-status.pending {

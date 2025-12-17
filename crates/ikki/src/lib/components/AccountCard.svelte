@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Copy, RefreshCw } from "lucide-svelte";
+  import { Copy, RefreshCw, Shield } from "lucide-svelte";
   import { ui } from "../stores/ui";
   import { formatZec, truncateAddress, copyToClipboard } from "../utils/format";
 
@@ -7,21 +7,29 @@
   export let address: string = "";
   export let syncing: boolean = false;
 
+  let copied = false;
+
   async function handleCopy() {
     const success = await copyToClipboard(address);
     if (success) {
+      copied = true;
       ui.showToast("Address copied", "success");
+      setTimeout(() => (copied = false), 2000);
     }
   }
 </script>
 
 <div class="account-card">
+  <div class="card-glow"></div>
   <div class="card-inner">
     <div class="card-header">
-      <span class="card-label">Total Balance</span>
+      <div class="label-row">
+        <Shield size={12} strokeWidth={2.5} />
+        <span class="card-label">Shielded Balance</span>
+      </div>
       {#if syncing}
         <div class="sync-badge">
-          <RefreshCw size={12} class="spin" />
+          <RefreshCw size={11} class="spin" />
           <span>Syncing</span>
         </div>
       {/if}
@@ -32,59 +40,91 @@
       <span class="balance-currency">ZEC</span>
     </div>
 
-    <button class="address-row" onclick={handleCopy}>
-      <span class="address-text">{truncateAddress(address, 10)}</span>
-      <Copy size={14} />
+    <button class="address-row" onclick={handleCopy} class:copied>
+      <span class="address-text">{truncateAddress(address, 12)}</span>
+      <div class="copy-icon">
+        <Copy size={13} strokeWidth={2} />
+      </div>
     </button>
   </div>
 </div>
 
 <style>
   .account-card {
-    background: var(--gradient-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    padding: var(--space-lg);
     position: relative;
+    border-radius: var(--radius-xl);
     overflow: hidden;
   }
 
-  .account-card::before {
+  .card-glow {
+    position: absolute;
+    inset: 0;
+    background: var(--gradient-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+  }
+
+  .card-glow::before {
     content: '';
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
     height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
+    background: linear-gradient(90deg,
+      transparent 0%,
+      rgba(255,255,255,0.08) 20%,
+      rgba(255,255,255,0.08) 80%,
+      transparent 100%
+    );
+  }
+
+  .card-glow::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--gradient-glow);
+    pointer-events: none;
   }
 
   .card-inner {
     position: relative;
     z-index: 1;
+    padding: var(--space-5) var(--space-5) var(--space-4);
   }
 
   .card-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: var(--space-md);
+    margin-bottom: var(--space-3);
+  }
+
+  .label-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1\.5);
+    color: var(--text-tertiary);
   }
 
   .card-label {
     font-size: var(--text-caption);
     font-weight: var(--weight-medium);
-    color: var(--text-tertiary);
     text-transform: uppercase;
-    letter-spacing: 0.08em;
+    letter-spacing: var(--tracking-widest);
   }
 
   .sync-badge {
     display: flex;
     align-items: center;
-    gap: var(--space-xs);
-    font-size: var(--text-caption);
-    color: var(--text-secondary);
+    gap: 5px;
+    font-size: 10px;
+    font-weight: var(--weight-medium);
+    color: var(--text-tertiary);
+    padding: 3px 8px;
+    background: var(--bg-primary);
+    border-radius: var(--radius-full);
+    letter-spacing: 0.02em;
   }
 
   .sync-badge :global(.spin) {
@@ -94,8 +134,8 @@
   .balance-section {
     display: flex;
     align-items: baseline;
-    gap: var(--space-sm);
-    margin-bottom: var(--space-lg);
+    gap: var(--space-2);
+    margin-bottom: var(--space-4);
   }
 
   .balance-value {
@@ -103,13 +143,15 @@
     font-weight: var(--weight-bold);
     color: var(--text-primary);
     letter-spacing: var(--tracking-tight);
-    line-height: 1;
+    line-height: var(--leading-none);
+    font-variant-numeric: tabular-nums;
   }
 
   .balance-currency {
-    font-size: var(--text-body);
-    font-weight: var(--weight-medium);
+    font-size: var(--text-small);
+    font-weight: var(--weight-semibold);
     color: var(--text-tertiary);
+    letter-spacing: 0.05em;
   }
 
   .address-row {
@@ -117,26 +159,44 @@
     align-items: center;
     justify-content: space-between;
     width: 100%;
-    padding: var(--space-sm) var(--space-md);
-    background: var(--bg-primary);
+    padding: var(--space-2\.5) var(--space-3);
+    background: rgba(0, 0, 0, 0.3);
     border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-md);
     cursor: pointer;
     transition: all var(--transition-fast);
   }
 
   .address-row:hover {
-    background: var(--bg-secondary);
+    background: rgba(0, 0, 0, 0.4);
     border-color: var(--border-light);
+  }
+
+  .address-row:active {
+    transform: scale(0.99);
+  }
+
+  .address-row.copied {
+    border-color: var(--success);
+  }
+
+  .address-row.copied .copy-icon {
+    color: var(--success);
   }
 
   .address-text {
     font-family: var(--font-mono);
     font-size: var(--text-small);
     color: var(--text-secondary);
+    letter-spacing: 0.02em;
   }
 
-  .address-row :global(svg) {
+  .copy-icon {
     color: var(--text-tertiary);
+    transition: color var(--transition-fast);
+  }
+
+  .address-row:hover .copy-icon {
+    color: var(--text-secondary);
   }
 </style>

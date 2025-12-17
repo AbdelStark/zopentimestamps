@@ -14,9 +14,15 @@
   $: label = config[variant].label;
 </script>
 
-<button class="action-button" class:send={variant === "send"} class:receive={variant === "receive"} {disabled} {onclick}>
+<button
+  class="action-button"
+  class:send={variant === "send"}
+  class:receive={variant === "receive"}
+  {disabled}
+  {onclick}
+>
   <div class="action-icon">
-    <Icon size={20} strokeWidth={2} />
+    <Icon size={22} strokeWidth={2.5} />
   </div>
   <span class="action-label">{label}</span>
 </button>
@@ -26,8 +32,8 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: var(--space-sm);
-    padding: var(--space-md) var(--space-xl);
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-6);
     background: none;
     border: none;
     cursor: pointer;
@@ -40,8 +46,8 @@
   }
 
   .action-icon {
-    width: 48px;
-    height: 48px;
+    width: 56px;
+    height: 56px;
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -49,7 +55,18 @@
     background: var(--bg-card);
     border: 1px solid var(--border);
     color: var(--text-primary);
-    transition: all var(--transition-fast);
+    transition: all var(--transition-normal);
+    position: relative;
+  }
+
+  .action-icon::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: 50%;
+    background: transparent;
+    transition: all var(--transition-normal);
+    z-index: -1;
   }
 
   .action-button:not(:disabled):hover .action-icon {
@@ -58,21 +75,26 @@
     transform: translateY(-2px);
   }
 
+  .action-button:not(:disabled):hover .action-icon::before {
+    box-shadow: 0 8px 24px rgba(255, 255, 255, 0.04);
+  }
+
   .action-button:not(:disabled):active .action-icon {
     transform: translateY(0);
   }
 
-  .action-button.send .action-icon {
-    color: var(--text-primary);
+  .action-button.send:not(:disabled):hover .action-icon {
+    border-color: rgba(248, 113, 113, 0.3);
   }
 
-  .action-button.receive .action-icon {
-    color: var(--text-primary);
+  .action-button.receive:not(:disabled):hover .action-icon {
+    border-color: rgba(74, 222, 128, 0.3);
   }
 
   .action-label {
     font-size: var(--text-small);
     font-weight: var(--weight-medium);
     color: var(--text-secondary);
+    letter-spacing: 0.01em;
   }
 </style>

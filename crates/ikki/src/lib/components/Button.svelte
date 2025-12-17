@@ -26,7 +26,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: var(--space-sm);
+    gap: var(--space-2);
     font-family: var(--font-family);
     font-weight: var(--weight-medium);
     border: none;
@@ -34,10 +34,12 @@
     transition: all var(--transition-fast);
     white-space: nowrap;
     letter-spacing: 0.01em;
+    position: relative;
+    -webkit-tap-highlight-color: transparent;
   }
 
   .button:disabled {
-    opacity: 0.4;
+    opacity: 0.5;
     cursor: not-allowed;
   }
 
@@ -45,24 +47,25 @@
     animation: spin 1s linear infinite;
   }
 
-  /* Sizes */
+  /* Sizes - Refined */
   .button-sm {
-    padding: var(--space-sm) var(--space-md);
+    padding: var(--space-2) var(--space-3);
     font-size: var(--text-small);
     border-radius: var(--radius-sm);
-    height: 36px;
+    height: 34px;
   }
 
   .button-md {
-    padding: var(--space-md) var(--space-lg);
+    padding: var(--space-2\.5) var(--space-4);
     font-size: var(--text-body);
     border-radius: var(--radius-md);
     height: 44px;
   }
 
   .button-lg {
-    padding: var(--space-md) var(--space-xl);
+    padding: var(--space-3) var(--space-6);
     font-size: var(--text-body);
+    font-weight: var(--weight-semibold);
     border-radius: var(--radius-md);
     height: 52px;
   }
@@ -77,6 +80,10 @@
     background: var(--accent-secondary);
   }
 
+  .button-primary:not(:disabled):active {
+    transform: scale(0.98);
+  }
+
   /* Secondary - Border */
   .button-secondary {
     background: transparent;
@@ -87,6 +94,10 @@
   .button-secondary:not(:disabled):hover {
     background: var(--bg-card);
     border-color: var(--border-focus);
+  }
+
+  .button-secondary:not(:disabled):active {
+    transform: scale(0.98);
   }
 
   /* Ghost */
@@ -100,6 +111,10 @@
     color: var(--text-primary);
   }
 
+  .button-ghost:not(:disabled):active {
+    transform: scale(0.98);
+  }
+
   /* Danger */
   .button-danger {
     background: var(--error);
@@ -107,7 +122,11 @@
   }
 
   .button-danger:not(:disabled):hover {
-    background: #ef4444;
+    background: #dc2626;
+  }
+
+  .button-danger:not(:disabled):active {
+    transform: scale(0.98);
   }
 
   .full-width {

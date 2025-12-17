@@ -27,13 +27,13 @@
   <div class="history-content">
     {#if loading}
       <div class="loading-state">
-        <Loader2 size={24} class="spin" />
+        <Loader2 size={22} class="spin" />
         <p>Loading transactions</p>
       </div>
     {:else if error}
       <div class="error-state">
         <div class="error-icon">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="10"/>
             <line x1="12" y1="8" x2="12" y2="12"/>
             <line x1="12" y1="16" x2="12.01" y2="16"/>
@@ -44,7 +44,7 @@
     {:else if transactions.length === 0}
       <div class="empty-state">
         <div class="empty-icon">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
           </svg>
         </div>
@@ -79,19 +79,21 @@
   }
 
   .history-header {
-    padding: var(--space-lg);
-    padding-bottom: var(--space-md);
+    padding: var(--space-5);
+    padding-bottom: var(--space-3);
   }
 
   .history-header h1 {
-    font-size: var(--text-h3);
+    font-size: var(--text-h2);
     font-weight: var(--weight-semibold);
     color: var(--text-primary);
+    letter-spacing: var(--tracking-tight);
   }
 
   .history-content {
     flex: 1;
-    padding: 0 var(--space-lg) var(--space-lg);
+    padding: 0 var(--space-5) var(--space-5);
+    padding-bottom: calc(var(--nav-height) + var(--space-4));
   }
 
   .loading-state {
@@ -99,18 +101,18 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: var(--space-3xl) 0;
-    gap: var(--space-md);
-    color: var(--text-secondary);
+    padding: var(--space-12) 0;
+    gap: var(--space-3);
+    color: var(--text-tertiary);
   }
 
   .loading-state :global(.spin) {
     animation: spin 1s linear infinite;
-    color: var(--text-tertiary);
   }
 
   .loading-state p {
     font-size: var(--text-small);
+    letter-spacing: 0.01em;
   }
 
   .error-state {
@@ -118,18 +120,21 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: var(--space-3xl) 0;
-    gap: var(--space-md);
+    padding: var(--space-12) 0;
+    gap: var(--space-3);
     text-align: center;
   }
 
   .error-icon {
     color: var(--text-tertiary);
+    opacity: 0.5;
   }
 
   .error-message {
     color: var(--text-secondary);
     font-size: var(--text-small);
+    max-width: 280px;
+    line-height: var(--leading-relaxed);
   }
 
   .empty-state {
@@ -137,15 +142,15 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: var(--space-3xl) 0;
+    padding: var(--space-12) var(--space-4);
     text-align: center;
-    gap: var(--space-md);
+    gap: var(--space-3);
   }
 
   .empty-icon {
     color: var(--text-tertiary);
-    opacity: 0.5;
-    margin-bottom: var(--space-sm);
+    opacity: 0.4;
+    margin-bottom: var(--space-2);
   }
 
   .empty-state h3 {
@@ -164,5 +169,9 @@
     border-radius: var(--radius-lg);
     border: 1px solid var(--border);
     overflow: hidden;
+  }
+
+  .transaction-list > :global(*:not(:last-child)) {
+    border-bottom: 1px solid var(--divider);
   }
 </style>

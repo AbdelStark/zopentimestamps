@@ -1,13 +1,24 @@
 <script lang="ts">
+  import { onMount } from "svelte";
   import { wallet, balance, address, isSyncing } from "../lib/stores/wallet";
   import { ui } from "../lib/stores/ui";
-  import { syncWallet } from "../lib/utils/tauri";
+  import { syncWallet, getTransactions, type Transaction } from "../lib/utils/tauri";
   import AccountCard from "../lib/components/AccountCard.svelte";
   import ActionButton from "../lib/components/ActionButton.svelte";
   import TransactionItem from "../lib/components/TransactionItem.svelte";
 
-  // Mock recent transactions (until we implement transaction history)
-  let recentTransactions: any[] = [];
+  let recentTransactions: Transaction[] = [];
+  let loading = true;
+
+  onMount(async () => {
+    try {
+      recentTransactions = await getTransactions();
+    } catch (e) {
+      console.error("Failed to load transactions:", e);
+    } finally {
+      loading = false;
+    }
+  });
 
   async function handleSync() {
     try {
@@ -18,6 +29,8 @@
         shielded: result.balance,
         transparent: 0,
       });
+      // Refresh transactions after sync
+      recentTransactions = await getTransactions();
       ui.showToast("Wallet synced", "success");
     } catch (e) {
       ui.showToast(`Sync failed: ${e}`, "error");
@@ -50,10 +63,25 @@
         {/if}
       </div>
 
-      {#if recentTransactions.length === 0}
+      {#if loading}
+        <div class="loading-state">
+          <div class="skeleton-list">
+            {#each [1, 2, 3] as _}
+              <div class="skeleton-item">
+                <div class="skeleton skeleton-icon"></div>
+                <div class="skeleton-content">
+                  <div class="skeleton skeleton-title"></div>
+                  <div class="skeleton skeleton-subtitle"></div>
+                </div>
+                <div class="skeleton skeleton-amount"></div>
+              </div>
+            {/each}
+          </div>
+        </div>
+      {:else if recentTransactions.length === 0}
         <div class="empty-state">
           <div class="empty-icon">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
               <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
             </svg>
           </div>
@@ -82,14 +110,15 @@
 <style>
   .home {
     min-height: 100%;
-    padding: var(--space-lg);
+    padding: var(--space-5);
+    padding-bottom: calc(var(--nav-height) + var(--space-4));
     animation: fadeIn var(--transition-normal) ease-out;
   }
 
   .home-content {
     display: flex;
     flex-direction: column;
-    gap: var(--space-xl);
+    gap: var(--space-6);
     max-width: var(--max-width);
     margin: 0 auto;
   }
@@ -97,44 +126,45 @@
   .actions {
     display: flex;
     justify-content: center;
-    gap: var(--space-2xl);
+    gap: var(--space-8);
   }
 
   .recent-section {
     display: flex;
     flex-direction: column;
-    gap: var(--space-md);
+    gap: var(--space-3);
   }
 
   .section-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 var(--space-xs);
+    padding: 0 var(--space-1);
   }
 
   .section-header h3 {
-    font-size: var(--text-small);
-    font-weight: var(--weight-medium);
-    color: var(--text-secondary);
+    font-size: var(--text-caption);
+    font-weight: var(--weight-semibold);
+    color: var(--text-tertiary);
     text-transform: uppercase;
-    letter-spacing: 0.08em;
+    letter-spacing: var(--tracking-widest);
   }
 
   .see-all {
     background: none;
     border: none;
-    color: var(--text-secondary);
-    font-size: var(--text-small);
+    color: var(--text-tertiary);
+    font-size: var(--text-caption);
     font-weight: var(--weight-medium);
     cursor: pointer;
-    padding: var(--space-xs) var(--space-sm);
+    padding: var(--space-1) var(--space-2);
     border-radius: var(--radius-sm);
     transition: all var(--transition-fast);
+    letter-spacing: 0.02em;
   }
 
   .see-all:hover {
-    color: var(--text-primary);
+    color: var(--text-secondary);
     background: var(--bg-card);
   }
 
@@ -145,11 +175,74 @@
     overflow: hidden;
   }
 
+  .transaction-list > :global(*:not(:last-child)) {
+    border-bottom: 1px solid var(--divider);
+  }
+
+  .loading-state {
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  .skeleton-list {
+    padding: var(--space-1);
+  }
+
+  .skeleton-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3);
+  }
+
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      var(--bg-elevated) 25%,
+      var(--bg-hover) 50%,
+      var(--bg-elevated) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: var(--radius-sm);
+  }
+
+  .skeleton-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .skeleton-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .skeleton-title {
+    height: 14px;
+    width: 60px;
+  }
+
+  .skeleton-subtitle {
+    height: 11px;
+    width: 80px;
+  }
+
+  .skeleton-amount {
+    width: 60px;
+    height: 14px;
+  }
+
   .empty-state {
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: var(--space-3xl) var(--space-lg);
+    padding: var(--space-12) var(--space-4);
     text-align: center;
     background: var(--bg-card);
     border-radius: var(--radius-lg);
@@ -158,15 +251,15 @@
 
   .empty-icon {
     color: var(--text-tertiary);
-    margin-bottom: var(--space-lg);
-    opacity: 0.5;
+    margin-bottom: var(--space-4);
+    opacity: 0.4;
   }
 
   .empty-title {
     font-size: var(--text-body);
     font-weight: var(--weight-medium);
     color: var(--text-primary);
-    margin-bottom: var(--space-xs);
+    margin-bottom: var(--space-1);
   }
 
   .empty-subtitle {
