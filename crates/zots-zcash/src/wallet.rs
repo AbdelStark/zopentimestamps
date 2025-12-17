@@ -51,6 +51,14 @@ pub struct TimestampTxResult {
     pub txid_bytes: [u8; 32],
 }
 
+/// Result of sending a transaction
+pub struct SendResult {
+    /// Transaction ID as string
+    pub txid: String,
+    /// Fee paid in zatoshis
+    pub fee: u64,
+}
+
 /// Result of waiting for transaction confirmation
 pub struct ConfirmationResult {
     /// Block height where transaction was confirmed
@@ -485,6 +493,146 @@ impl ZotsWallet {
         Ok(TimestampTxResult {
             txid: txid.to_string(), // Uses the Display impl which gives explorer-friendly format
             txid_bytes,
+        })
+    }
+
+    /// Send ZEC to an address
+    ///
+    /// Creates and broadcasts a shielded transaction to the specified address.
+    /// Optionally includes a memo.
+    pub async fn send_to_address(
+        &mut self,
+        to_address: &str,
+        amount_zatoshi: u64,
+        memo: Option<Vec<u8>>,
+    ) -> anyhow::Result<SendResult> {
+        let accounts = self.db.get_account_ids()?;
+        let account_id = accounts
+            .first()
+            .ok_or_else(|| anyhow::anyhow!("No account found"))?;
+        info!(
+            "Sending {} zatoshis to {} from account {:?}",
+            amount_zatoshi, to_address, account_id
+        );
+
+        // Check balance
+        let summary = self.db.get_wallet_summary(ConfirmationsPolicy::MIN)?;
+        let (orchard_balance, sapling_balance) = summary
+            .as_ref()
+            .and_then(|s| s.account_balances().get(account_id))
+            .map(|b| {
+                (
+                    u64::from(b.orchard_balance().spendable_value()),
+                    u64::from(b.sapling_balance().spendable_value()),
+                )
+            })
+            .unwrap_or((0, 0));
+
+        let total_shielded = orchard_balance + sapling_balance;
+        let min_required = amount_zatoshi + 20000; // amount + ZIP-317 fee estimate
+        debug!(
+            orchard_balance,
+            sapling_balance, total_shielded, amount_zatoshi, "Balance check for send"
+        );
+
+        if total_shielded < min_required {
+            return Err(anyhow::anyhow!(
+                "Insufficient shielded funds. Need {min_required} zatoshis, have {total_shielded} zatoshis"
+            ));
+        }
+
+        // Parse the destination address
+        use zcash_address::ZcashAddress;
+        let parsed_address: ZcashAddress = to_address
+            .parse()
+            .map_err(|e| anyhow::anyhow!("Invalid address: {e:?}"))?;
+        let address = parsed_address
+            .convert::<zcash_keys::address::Address>()
+            .map_err(|e| anyhow::anyhow!("Address conversion failed: {e:?}"))?;
+
+        // Create memo if provided
+        let memo_bytes = if let Some(data) = memo {
+            MemoBytes::from_bytes(&data).map_err(|_| anyhow::anyhow!("Invalid memo"))?
+        } else {
+            MemoBytes::empty()
+        };
+
+        // Derive spending key
+        debug!("Deriving unified spending key for transaction");
+        let usk = UnifiedSpendingKey::from_seed(&TEST_NETWORK, &self.seed, AccountId::ZERO)
+            .map_err(|e| anyhow::anyhow!("Failed to derive spending key: {e:?}"))?;
+
+        // Create proposal
+        let send_amount =
+            Zatoshis::from_u64(amount_zatoshi).map_err(|_| anyhow::anyhow!("Invalid amount"))?;
+
+        let proposal = propose_standard_transfer_to_address::<_, _, SqliteClientError>(
+            &mut self.db,
+            &TEST_NETWORK,
+            StandardFeeRule::Zip317,
+            *account_id,
+            ConfirmationsPolicy::MIN,
+            &address,
+            send_amount,
+            Some(memo_bytes),
+            None,
+            ShieldedProtocol::Orchard,
+        )
+        .map_err(|e| anyhow::anyhow!("Failed to create transaction proposal: {e:?}"))?;
+
+        // Estimate fee (ZIP-317 standard fee)
+        let fee = 10000u64; // 0.0001 ZEC - standard minimum fee
+
+        // Load prover and build transaction
+        let prover = LocalTxProver::bundled();
+        let spending_keys = SpendingKeys::from_unified_spending_key(usk);
+        debug!("Building and signing transaction");
+
+        let txids = build_and_sign_transaction(
+            &mut self.db,
+            &TEST_NETWORK,
+            &prover,
+            &spending_keys,
+            &proposal,
+        )?;
+
+        let txid = *txids.first();
+        info!("Transaction built with txid {}", txid);
+
+        // Get the transaction and broadcast
+        let tx = self
+            .db
+            .get_transaction(txid)?
+            .ok_or_else(|| anyhow::anyhow!("Transaction not found in database"))?;
+
+        let mut tx_bytes = Vec::new();
+        tx.write(&mut tx_bytes)
+            .map_err(|e| anyhow::anyhow!("Failed to serialize transaction: {e:?}"))?;
+
+        let raw_tx = RawTransaction {
+            data: tx_bytes,
+            height: 0,
+        };
+
+        let response = self
+            .client
+            .send_transaction(raw_tx)
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to broadcast transaction: {e:?}"))?;
+
+        let send_response = response.into_inner();
+        if send_response.error_code != 0 {
+            return Err(anyhow::anyhow!(
+                "Transaction rejected (code {}): {}",
+                send_response.error_code,
+                send_response.error_message
+            ));
+        }
+
+        info!("Transaction {} broadcast successfully", txid);
+        Ok(SendResult {
+            txid: txid.to_string(),
+            fee,
         })
     }
 

@@ -5,6 +5,7 @@ members = [
     "crates/zots-zcash",
     "crates/zots-cli",
     "crates/zots-desktop",
+    "crates/ikki",
 ]
 
 [workspace.package]
