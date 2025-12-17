@@ -27,11 +27,11 @@ pub fn view(app: &ZotsApp) -> Element<Message> {
         .to_string();
     let stats = container(
         row![
-            stat_card("◈", "Balance", balance_str),
+            stat_card("Balance", balance_str),
             Space::with_width(16),
-            stat_card("▣", "Block Height", block_str),
+            stat_card("Block Height", block_str),
             Space::with_width(16),
-            stat_card("→", "Network", network_str),
+            stat_card("Network", network_str),
         ]
         .padding([0, 0]),
     );
@@ -42,21 +42,18 @@ pub fn view(app: &ZotsApp) -> Element<Message> {
         .style(theme::text_style::muted());
 
     let stamp_action = action_card(
-        "✎",
         "Create Timestamp",
         "Timestamp a file or hash on the Zcash blockchain",
         View::Stamp,
     );
 
     let verify_action = action_card(
-        "✓",
         "Verify Proof",
         "Verify a timestamp proof against the blockchain",
         View::Verify,
     );
 
     let wallet_action = action_card(
-        "◈",
         "Wallet",
         "View balance and configure your wallet",
         View::Wallet,
@@ -67,7 +64,7 @@ pub fn view(app: &ZotsApp) -> Element<Message> {
     // Security warning
     let warning = container(
         row![
-            text("⚠").size(20),
+            text("!").size(20),
             Space::with_width(12),
             column![
                 text("Testnet Only")
@@ -131,15 +128,10 @@ pub fn view(app: &ZotsApp) -> Element<Message> {
     .into()
 }
 
-fn stat_card(icon: &'static str, label: &'static str, value: String) -> Element<'static, Message> {
+fn stat_card(label: &'static str, value: String) -> Element<'static, Message> {
     container(
         column![
-            row![
-                text(icon).size(24),
-                Space::with_width(8),
-                text(label).size(12).style(theme::text_style::muted()),
-            ]
-            .align_y(Alignment::Center),
+            text(label).size(12).style(theme::text_style::muted()),
             Space::with_height(8),
             text(value).size(18).style(theme::text_style::accent()),
         ]
@@ -151,17 +143,14 @@ fn stat_card(icon: &'static str, label: &'static str, value: String) -> Element<
 }
 
 fn action_card<'a>(
-    icon: &'a str,
     title: &'a str,
     description: &'a str,
     target: View,
 ) -> Element<'a, Message> {
     button(
         column![
-            text(icon).size(32),
-            Space::with_height(12),
             text(title).size(16),
-            Space::with_height(4),
+            Space::with_height(8),
             text(description)
                 .size(12)
                 .style(theme::text_style::muted()),

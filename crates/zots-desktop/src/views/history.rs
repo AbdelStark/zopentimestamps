@@ -8,7 +8,7 @@ use iced::{Alignment, Color, Element, Length};
 
 pub fn view(app: &ZotsApp) -> Element<Message> {
     let title = row![
-        text("≡").size(28),
+        text(">").size(28),
         Space::with_width(12),
         text("Proof History").size(24),
     ]
@@ -20,7 +20,7 @@ pub fn view(app: &ZotsApp) -> Element<Message> {
 
     let refresh_btn = button(
         row![
-            text(if app.history_loading { app.spinner() } else { "↻" }).size(14),
+            text(if app.history_loading { app.spinner() } else { ">" }).size(14),
             Space::with_width(8),
             text(if app.history_loading { "Loading..." } else { "Refresh" }).size(14),
         ]
@@ -36,7 +36,7 @@ pub fn view(app: &ZotsApp) -> Element<Message> {
     let content = if app.history.is_empty() && !app.history_loading {
         container(
             column![
-                text("∅").size(48),
+                text("--").size(48),
                 Space::with_height(16),
                 text("No proofs found")
                     .size(16)
@@ -122,7 +122,7 @@ pub fn view(app: &ZotsApp) -> Element<Message> {
                         text(created).size(11).style(theme::text_style::muted()),
                         Space::with_width(16),
                         // Actions
-                        button(text("✕").size(12))
+                        button(text("x").size(12))
                             .padding([6, 10])
                             .style(theme::button_style::secondary)
                             .on_press(Message::DeleteProof(entry.path.clone())),

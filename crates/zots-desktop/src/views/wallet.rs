@@ -8,7 +8,7 @@ use iced::{Alignment, Element, Length};
 
 pub fn view(app: &ZotsApp) -> Element<Message> {
     let title = row![
-        text("◈").size(28),
+        text(">").size(28),
         Space::with_width(12),
         text("Wallet").size(24),
     ]
@@ -21,7 +21,7 @@ pub fn view(app: &ZotsApp) -> Element<Message> {
     // Security warning
     let warning = container(
         row![
-            text("⚠").size(20),
+            text("!").size(20),
             Space::with_width(12),
             column![
                 text("Security Warning")
@@ -62,7 +62,7 @@ pub fn view(app: &ZotsApp) -> Element<Message> {
         } else {
             button(
                 row![
-                    text("↻").size(14),
+                    text(">").size(14),
                     Space::with_width(8),
                     text("Sync Now").size(14),
                 ]
@@ -124,7 +124,7 @@ pub fn view(app: &ZotsApp) -> Element<Message> {
             wallet_col.push(
                 container(
                     row![
-                        text("⚠").size(14).color(colors::ERROR),
+                        text("!").size(14).color(colors::ERROR),
                         Space::with_width(8),
                         text(error).size(12).color(colors::ERROR),
                     ]
@@ -143,7 +143,7 @@ pub fn view(app: &ZotsApp) -> Element<Message> {
         // No wallet configured - show seed input
         let setup_col = column![
             row![
-                text("◐").size(18),
+                text(">").size(18),
                 Space::with_width(12),
                 text("Configure Wallet").size(16),
             ]
@@ -164,7 +164,7 @@ pub fn view(app: &ZotsApp) -> Element<Message> {
             Space::with_height(16),
             button(
                 row![
-                    text("▶").size(14),
+                    text(">").size(14),
                     Space::with_width(8),
                     text("Save & Connect").size(14),
                 ]
@@ -180,7 +180,7 @@ pub fn view(app: &ZotsApp) -> Element<Message> {
         let setup_col = if let Some(error) = &app.wallet_error {
             setup_col.push(container(
                 row![
-                    text("⚠").size(14).color(colors::ERROR),
+                    text("!").size(14).color(colors::ERROR),
                     Space::with_width(8),
                     text(error).size(12).color(colors::ERROR),
                 ]

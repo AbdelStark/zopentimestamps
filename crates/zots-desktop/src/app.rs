@@ -456,15 +456,13 @@ impl ZotsApp {
             .iter()
             .map(|view| {
                 let is_active = self.current_view == *view;
+                let indicator = if is_active { "> " } else { "  " };
                 button(
-                    row![
-                        text(view.icon()).size(18),
-                        Space::with_width(12),
-                        text(view.title()).size(14),
-                    ]
-                    .padding([8, 12])
-                    .align_y(iced::Alignment::Center),
+                    text(format!("{}{}", indicator, view.title()))
+                        .size(14)
+                        .width(Length::Fill),
                 )
+                .padding([10, 16])
                 .width(Length::Fill)
                 .style(move |theme, status| theme::button_style::nav(theme, status, is_active))
                 .on_press(Message::NavigateTo(*view))
@@ -472,18 +470,13 @@ impl ZotsApp {
             })
             .collect();
 
-        let logo = row![
-            text("◷").size(28),
-            Space::with_width(8),
-            column![
-                text("zOpenTimestamps").size(16).font(Font::DEFAULT),
-                text("Zcash Timestamping")
-                    .size(11)
-                    .style(theme::text_style::muted()),
-            ],
+        let logo = column![
+            text("zOpenTimestamps").size(16).font(Font::DEFAULT),
+            text("Zcash Timestamping")
+                .size(11)
+                .style(theme::text_style::muted()),
         ]
-        .align_y(iced::Alignment::Center)
-        .padding([16, 16]);
+        .padding([20, 16]);
 
         let nav = column(nav_buttons).spacing(4).padding([8, 12]);
 
