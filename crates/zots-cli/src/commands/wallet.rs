@@ -46,7 +46,7 @@ pub async fn balance() -> anyhow::Result<()> {
     let balance = wallet.get_balance()?;
     let zec = balance as f64 / 100_000_000.0;
 
-    print_info("Balance", &format!("{:.8} ZEC ({} zatoshis)", zec, balance));
+    print_info("Balance", &format!("{zec:.8} ZEC ({balance} zatoshis)"));
 
     Ok(())
 }
@@ -89,9 +89,8 @@ pub async fn info() -> anyhow::Result<()> {
     print_info(
         "Balance",
         &format!(
-            "{:.8} ZEC ({} zatoshis)",
-            balance as f64 / 100_000_000.0,
-            balance
+            "{:.8} ZEC ({balance} zatoshis)",
+            balance as f64 / 100_000_000.0
         ),
     );
     print_info("Address", &address);

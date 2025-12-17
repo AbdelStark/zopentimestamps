@@ -57,7 +57,7 @@ impl ZcashConfig {
         let birthday_height = std::env::var("ZOTS_BIRTHDAY_HEIGHT")
             .unwrap_or_else(|_| "3717528".to_string())
             .parse()
-            .map_err(|e| anyhow::anyhow!("Invalid ZOTS_BIRTHDAY_HEIGHT: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Invalid ZOTS_BIRTHDAY_HEIGHT: {e}"))?;
 
         let lightwalletd_url = std::env::var("ZOTS_LIGHTWALLETD")
             .unwrap_or_else(|_| "https://testnet.zec.rocks:443".to_string());

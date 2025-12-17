@@ -12,17 +12,12 @@ use std::io::{BufReader, Read};
 use std::path::Path;
 
 /// Supported hashing algorithms for timestamping proofs.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum HashAlgorithm {
+    #[default]
     Sha256,
     Blake3,
-}
-
-impl Default for HashAlgorithm {
-    fn default() -> Self {
-        HashAlgorithm::Sha256
-    }
 }
 
 impl HashAlgorithm {
@@ -117,12 +112,12 @@ pub fn hash_from_hex_with(hex_str: &str, algorithm: HashAlgorithm) -> Result<Has
     if cleaned.len() == 40 {
         // Git commit hash (20 bytes) - hash it to get 32 bytes
         let bytes =
-            hex::decode(cleaned).map_err(|e| Error::InvalidHash(format!("Invalid hex: {}", e)))?;
+            hex::decode(cleaned).map_err(|e| Error::InvalidHash(format!("Invalid hex: {e}")))?;
         Ok(hash_bytes_with(&bytes, algorithm))
     } else if cleaned.len() == 64 {
         // Already a 32-byte hash digest
         let bytes =
-            hex::decode(cleaned).map_err(|e| Error::InvalidHash(format!("Invalid hex: {}", e)))?;
+            hex::decode(cleaned).map_err(|e| Error::InvalidHash(format!("Invalid hex: {e}")))?;
         let mut hash = [0u8; 32];
         hash.copy_from_slice(&bytes);
         Ok(hash)

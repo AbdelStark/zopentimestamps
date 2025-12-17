@@ -35,7 +35,7 @@ pub fn run(input: String) -> anyhow::Result<()> {
 
     println!();
     print_header("Compact Format");
-    println!("{}", compact);
+    println!("{compact}");
     println!();
     print_info("Length", &format!("{} chars", compact.len()));
 

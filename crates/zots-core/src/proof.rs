@@ -137,7 +137,7 @@ impl ZcashAttestation {
     /// Get the txid as raw bytes (internal byte order)
     pub fn txid_bytes(&self) -> Result<[u8; 32]> {
         let bytes = hex::decode(&self.txid)
-            .map_err(|e| Error::InvalidProof(format!("Invalid txid hex: {}", e)))?;
+            .map_err(|e| Error::InvalidProof(format!("Invalid txid hex: {e}")))?;
         if bytes.len() != 32 {
             return Err(Error::InvalidProof("TXID must be 32 bytes".into()));
         }
@@ -192,7 +192,7 @@ impl TimestampProof {
     /// Get the hash as raw bytes
     pub fn hash_bytes(&self) -> Result<Hash256> {
         let bytes = hex::decode(&self.hash)
-            .map_err(|e| Error::InvalidProof(format!("Invalid hash hex: {}", e)))?;
+            .map_err(|e| Error::InvalidProof(format!("Invalid hash hex: {e}")))?;
         if bytes.len() != 32 {
             return Err(Error::InvalidProof("Hash must be 32 bytes".into()));
         }
@@ -219,13 +219,13 @@ impl TimestampProof {
     /// Serialize the proof to JSON
     pub fn serialize(&self) -> Result<String> {
         serde_json::to_string_pretty(self)
-            .map_err(|e| Error::InvalidProof(format!("JSON serialization failed: {}", e)))
+            .map_err(|e| Error::InvalidProof(format!("JSON serialization failed: {e}")))
     }
 
     /// Deserialize a proof from JSON
     pub fn deserialize(data: &str) -> Result<Self> {
         let proof: Self = serde_json::from_str(data)
-            .map_err(|e| Error::InvalidProof(format!("JSON parse error: {}", e)))?;
+            .map_err(|e| Error::InvalidProof(format!("JSON parse error: {e}")))?;
 
         if proof.version != PROOF_VERSION {
             return Err(Error::InvalidProof(format!(
@@ -265,10 +265,10 @@ impl TimestampProof {
     pub fn to_compact(&self) -> Result<String> {
         let mut cbor_data = Vec::new();
         ciborium::into_writer(self, &mut cbor_data)
-            .map_err(|e| Error::InvalidProof(format!("CBOR encoding failed: {}", e)))?;
+            .map_err(|e| Error::InvalidProof(format!("CBOR encoding failed: {e}")))?;
 
         let encoded = URL_SAFE_NO_PAD.encode(&cbor_data);
-        Ok(format!("{}{}", COMPACT_PREFIX, encoded))
+        Ok(format!("{COMPACT_PREFIX}{encoded}"))
     }
 
     /// Decode a proof from compact CBOR+Base64 format
@@ -279,18 +279,17 @@ impl TimestampProof {
 
         if !data.starts_with(COMPACT_PREFIX) {
             return Err(Error::InvalidProof(format!(
-                "Invalid compact format: must start with '{}'",
-                COMPACT_PREFIX
+                "Invalid compact format: must start with '{COMPACT_PREFIX}'"
             )));
         }
 
         let encoded = &data[COMPACT_PREFIX.len()..];
         let cbor_data = URL_SAFE_NO_PAD
             .decode(encoded)
-            .map_err(|e| Error::InvalidProof(format!("Base64 decode failed: {}", e)))?;
+            .map_err(|e| Error::InvalidProof(format!("Base64 decode failed: {e}")))?;
 
         let proof: Self = ciborium::from_reader(&cbor_data[..])
-            .map_err(|e| Error::InvalidProof(format!("CBOR decode failed: {}", e)))?;
+            .map_err(|e| Error::InvalidProof(format!("CBOR decode failed: {e}")))?;
 
         if proof.version != PROOF_VERSION {
             return Err(Error::InvalidProof(format!(

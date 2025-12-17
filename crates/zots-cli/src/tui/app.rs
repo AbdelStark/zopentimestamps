@@ -270,7 +270,7 @@ impl App {
                     self.task_running = false;
                 }
                 TaskMessage::SyncFailed(error) => {
-                    self.result_message = format!("Sync failed: {}", error);
+                    self.result_message = format!("Sync failed: {error}");
                     self.result_is_error = true;
                     self.operation_phase = OperationPhase::Failed;
                     self.task_running = false;
@@ -416,7 +416,7 @@ impl App {
                     (h, output)
                 }
                 Err(e) => {
-                    self.result_message = format!("Hash error: {}", e);
+                    self.result_message = format!("Hash error: {e}");
                     self.result_is_error = true;
                     self.operation_phase = OperationPhase::Failed;
                     return;
@@ -429,7 +429,7 @@ impl App {
                     (h, output)
                 }
                 Err(e) => {
-                    self.result_message = format!("Invalid hash: {}", e);
+                    self.result_message = format!("Invalid hash: {e}");
                     self.result_is_error = true;
                     self.operation_phase = OperationPhase::Failed;
                     return;
@@ -516,7 +516,7 @@ impl App {
                             self.result_is_error = false;
                         }
                         Err(e) => {
-                            self.result_message = format!("Invalid hash: {}", e);
+                            self.result_message = format!("Invalid hash: {e}");
                             self.result_is_error = true;
                         }
                     }
@@ -548,7 +548,7 @@ impl App {
                 let proof = match TimestampProof::load(&path) {
                     Ok(p) => p,
                     Err(e) => {
-                        self.result_message = format!("Load error: {}", e);
+                        self.result_message = format!("Load error: {e}");
                         self.result_is_error = true;
                         return;
                     }
@@ -557,7 +557,7 @@ impl App {
                 let proof_hash_bytes = match proof.hash_bytes() {
                     Ok(h) => h,
                     Err(e) => {
-                        self.result_message = format!("Invalid proof hash: {}", e);
+                        self.result_message = format!("Invalid proof hash: {e}");
                         self.result_is_error = true;
                         return;
                     }
@@ -578,7 +578,7 @@ impl App {
                 let verify_hash = match recomputed_hash {
                     Ok(hash) => hash,
                     Err(e) => {
-                        self.result_message = format!("Hash error: {}", e);
+                        self.result_message = format!("Hash error: {e}");
                         self.result_is_error = true;
                         return;
                     }
@@ -654,7 +654,7 @@ impl App {
                 let txid_bytes = match att.txid_bytes() {
                     Ok(b) => b,
                     Err(e) => {
-                        self.result_message = format!("Invalid TXID: {}", e);
+                        self.result_message = format!("Invalid TXID: {e}");
                         self.result_is_error = true;
                         self.operation_phase = OperationPhase::Failed;
                         return;
@@ -736,7 +736,7 @@ async fn run_stamp_task(
         Ok(w) => w,
         Err(e) => {
             let _ = tx
-                .send(TaskMessage::StampFailed(format!("Wallet error: {}", e)))
+                .send(TaskMessage::StampFailed(format!("Wallet error: {e}")))
                 .await;
             return;
         }
@@ -744,17 +744,14 @@ async fn run_stamp_task(
 
     if let Err(e) = wallet.init_account().await {
         let _ = tx
-            .send(TaskMessage::StampFailed(format!(
-                "Account init error: {}",
-                e
-            )))
+            .send(TaskMessage::StampFailed(format!("Account init error: {e}")))
             .await;
         return;
     }
 
     if let Err(e) = wallet.sync().await {
         let _ = tx
-            .send(TaskMessage::StampFailed(format!("Sync failed: {}", e)))
+            .send(TaskMessage::StampFailed(format!("Sync failed: {e}")))
             .await;
         return;
     }
@@ -773,10 +770,7 @@ async fn run_stamp_task(
         Ok(r) => r,
         Err(e) => {
             let _ = tx
-                .send(TaskMessage::StampFailed(format!(
-                    "Transaction failed: {}",
-                    e
-                )))
+                .send(TaskMessage::StampFailed(format!("Transaction failed: {e}")))
                 .await;
             return;
         }
@@ -806,8 +800,7 @@ async fn run_stamp_task(
 
             let _ = tx
                 .send(TaskMessage::StampFailed(format!(
-                    "TX broadcast but confirmation timed out: {}\nPending proof saved: {}",
-                    e,
+                    "TX broadcast but confirmation timed out: {e}\nPending proof saved: {}",
                     output_path.display()
                 )))
                 .await;
@@ -827,7 +820,7 @@ async fn run_stamp_task(
 
     if let Err(e) = proof.save(&output_path) {
         let _ = tx
-            .send(TaskMessage::StampFailed(format!("Save error: {}", e)))
+            .send(TaskMessage::StampFailed(format!("Save error: {e}")))
             .await;
         return;
     }
@@ -860,7 +853,7 @@ async fn run_sync_task(tx: mpsc::Sender<TaskMessage>, config: ZcashConfig) {
         Ok(w) => w,
         Err(e) => {
             let _ = tx
-                .send(TaskMessage::SyncFailed(format!("Wallet error: {}", e)))
+                .send(TaskMessage::SyncFailed(format!("Wallet error: {e}")))
                 .await;
             return;
         }
@@ -868,10 +861,7 @@ async fn run_sync_task(tx: mpsc::Sender<TaskMessage>, config: ZcashConfig) {
 
     if let Err(e) = wallet.init_account().await {
         let _ = tx
-            .send(TaskMessage::SyncFailed(format!(
-                "Account init error: {}",
-                e
-            )))
+            .send(TaskMessage::SyncFailed(format!("Account init error: {e}")))
             .await;
         return;
     }
@@ -936,7 +926,7 @@ async fn run_verify_task(tx: mpsc::Sender<TaskMessage>, config: ZcashConfig, dat
         Ok(w) => w,
         Err(e) => {
             let _ = tx
-                .send(TaskMessage::VerifyFailed(format!("Wallet error: {}", e)))
+                .send(TaskMessage::VerifyFailed(format!("Wallet error: {e}")))
                 .await;
             return;
         }
@@ -945,8 +935,7 @@ async fn run_verify_task(tx: mpsc::Sender<TaskMessage>, config: ZcashConfig, dat
     if let Err(e) = wallet.init_account().await {
         let _ = tx
             .send(TaskMessage::VerifyFailed(format!(
-                "Account init error: {}",
-                e
+                "Account init error: {e}"
             )))
             .await;
         return;
@@ -988,7 +977,7 @@ async fn run_verify_task(tx: mpsc::Sender<TaskMessage>, config: ZcashConfig, dat
                     timestamp: data.timestamp,
                     txid: data.txid,
                     explorer_link: data.explorer_link,
-                    error: Some(format!("Verification error: {}", e)),
+                    error: Some(format!("Verification error: {e}")),
                     file_hash_matches: data.file_hash_matches,
                 }))
                 .await;

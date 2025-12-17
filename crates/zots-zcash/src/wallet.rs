@@ -113,7 +113,7 @@ fn build_and_sign_transaction(
         OvkPolicy::Sender,
         proposal,
     )
-    .map_err(|e| anyhow::anyhow!("Failed to create transaction: {:?}", e))
+    .map_err(|e| anyhow::anyhow!("Failed to create transaction: {e:?}"))
 }
 
 /// Zcash wallet for timestamping operations
@@ -134,7 +134,7 @@ impl ZotsWallet {
 
         // Parse seed phrase
         let mnemonic = Mnemonic::<English>::from_phrase(&config.seed_phrase)
-            .map_err(|e| anyhow::anyhow!("Invalid seed phrase: {:?}", e))?;
+            .map_err(|e| anyhow::anyhow!("Invalid seed phrase: {e:?}"))?;
         let seed = mnemonic.to_seed("");
 
         // Initialize wallet database
@@ -171,7 +171,7 @@ impl ZotsWallet {
         // Create unified spending key from seed
         let account_id = AccountId::ZERO;
         let usk = UnifiedSpendingKey::from_seed(&TEST_NETWORK, &self.seed, account_id)
-            .map_err(|e| anyhow::anyhow!("Failed to derive spending key: {:?}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to derive spending key: {e:?}"))?;
         let ufvk = usk.to_unified_full_viewing_key();
 
         // Get birthday tree state from lightwalletd
@@ -204,9 +204,8 @@ impl ZotsWallet {
     pub async fn reset_wallet(&mut self) -> anyhow::Result<()> {
         let db_path = self.config.wallet_db_path();
         Err(anyhow::anyhow!(
-            "To reset the wallet, delete the database file at: {:?}\n\
-            Then set ZOTS_BIRTHDAY_HEIGHT to an earlier block and restart.",
-            db_path
+            "To reset the wallet, delete the database file at: {db_path:?}\n\
+            Then set ZOTS_BIRTHDAY_HEIGHT to an earlier block and restart."
         ))
     }
 
@@ -226,7 +225,7 @@ impl ZotsWallet {
             SYNC_BATCH_SIZE,
         )
         .await
-        .map_err(|e| anyhow::anyhow!("Sync failed: {:?}", e))?;
+        .map_err(|e| anyhow::anyhow!("Sync failed: {e:?}"))?;
 
         Ok(())
     }
@@ -325,7 +324,7 @@ impl ZotsWallet {
             *account_id,
             ConfirmationsPolicy::MIN,
         )
-        .map_err(|e| anyhow::anyhow!("Failed to propose shielding: {:?}", e))?;
+        .map_err(|e| anyhow::anyhow!("Failed to propose shielding: {e:?}"))?;
 
         // TODO: Implement full transaction building with zk-SNARK provers
         Err(anyhow::anyhow!(
@@ -404,7 +403,7 @@ impl ZotsWallet {
         // Derive spending key
         debug!("Deriving unified spending key for transaction");
         let usk = UnifiedSpendingKey::from_seed(&TEST_NETWORK, &self.seed, AccountId::ZERO)
-            .map_err(|e| anyhow::anyhow!("Failed to derive spending key: {:?}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to derive spending key: {e:?}"))?;
 
         // Create proposal for self-send with memo
         // Send dust amount (just to carry the memo)
@@ -422,7 +421,7 @@ impl ZotsWallet {
             None, // no change memo
             ShieldedProtocol::Orchard,
         )
-        .map_err(|e| anyhow::anyhow!("Failed to create transaction proposal: {:?}", e))?;
+        .map_err(|e| anyhow::anyhow!("Failed to create transaction proposal: {e:?}"))?;
         debug!("Proposal created for self-send with memo");
 
         // Load bundled Sapling prover (includes proving parameters)
@@ -453,7 +452,7 @@ impl ZotsWallet {
         // Serialize the transaction to bytes
         let mut tx_bytes = Vec::new();
         tx.write(&mut tx_bytes)
-            .map_err(|e| anyhow::anyhow!("Failed to serialize transaction: {:?}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to serialize transaction: {e:?}"))?;
 
         // Broadcast transaction
         let raw_tx = RawTransaction {
@@ -465,7 +464,7 @@ impl ZotsWallet {
             .client
             .send_transaction(raw_tx)
             .await
-            .map_err(|e| anyhow::anyhow!("Failed to broadcast transaction: {:?}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to broadcast transaction: {e:?}"))?;
 
         let send_response = response.into_inner();
         // error_code 0 means success, error_message may contain txid on success
@@ -524,9 +523,7 @@ impl ZotsWallet {
         }
 
         Err(anyhow::anyhow!(
-            "Transaction {} not confirmed within {} blocks",
-            txid,
-            max_blocks
+            "Transaction {txid} not confirmed within {max_blocks} blocks"
         ))
     }
 
@@ -568,7 +565,7 @@ impl ZotsWallet {
             .client
             .get_transaction(tx_filter)
             .await
-            .map_err(|e| anyhow::anyhow!("Failed to fetch transaction: {:?}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to fetch transaction: {e:?}"))?;
 
         let raw_tx = response.into_inner();
         debug!("Fetched raw transaction bytes: {}", raw_tx.data.len());
@@ -582,12 +579,12 @@ impl ZotsWallet {
 
         // Parse the raw transaction
         let tx = Transaction::read(&raw_tx.data[..], BranchId::Nu6)
-            .map_err(|e| anyhow::anyhow!("Failed to parse transaction: {:?}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to parse transaction: {e:?}"))?;
         debug!("Transaction parsed; scanning outputs for memo");
 
         // Get the viewing key for decryption
         let usk = UnifiedSpendingKey::from_seed(&TEST_NETWORK, &self.seed, AccountId::ZERO)
-            .map_err(|e| anyhow::anyhow!("Failed to derive spending key: {:?}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to derive spending key: {e:?}"))?;
         let ufvk = usk.to_unified_full_viewing_key();
 
         // Create a map of viewing keys for decrypt_transaction

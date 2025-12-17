@@ -581,7 +581,7 @@ fn draw_wallet(f: &mut Frame, area: Rect, app: &App) {
         content.push(Line::from(vec![
             Span::styled("  Balance:      ", Style::default().fg(Color::Gray)),
             Span::styled(
-                format!("{:.8} TAZ", balance_zec),
+                format!("{balance_zec:.8} TAZ"),
                 Style::default()
                     .fg(Color::Green)
                     .add_modifier(Modifier::BOLD),
@@ -643,7 +643,7 @@ fn draw_status_bar(f: &mut Frame, area: Rect, app: &App) {
         Span::raw(" │ "),
         Span::styled("Balance: ", Style::default().fg(Color::Gray)),
         Span::styled(
-            format!("{:.8} TAZ", balance_zec),
+            format!("{balance_zec:.8} TAZ"),
             Style::default().fg(Color::Green),
         ),
         Span::raw(" │ "),

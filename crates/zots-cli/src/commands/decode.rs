@@ -23,7 +23,7 @@ pub fn run(compact: String, output: Option<PathBuf>) -> anyhow::Result<()> {
     } else {
         // Print to stdout
         println!();
-        println!("{}", json);
+        println!("{json}");
     }
 
     println!();

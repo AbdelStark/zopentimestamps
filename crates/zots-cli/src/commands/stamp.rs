@@ -141,7 +141,7 @@ pub async fn run(
     println!();
     print_header("Embeddable Proof");
     let compact = proof.to_compact()?;
-    println!("{}", compact);
+    println!("{compact}");
     println!();
     print_info("Length", &format!("{} chars", compact.len()));
 
