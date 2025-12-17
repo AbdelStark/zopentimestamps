@@ -43,7 +43,9 @@ async fn main() -> anyhow::Result<()> {
     dotenvy::dotenv().ok();
 
     let cli = Cli::parse();
-    init_logging(cli.log_level);
+    if !matches!(cli.command, Commands::Tui) {
+        init_logging(cli.log_level);
+    }
 
     match cli.command {
         Commands::Stamp {
