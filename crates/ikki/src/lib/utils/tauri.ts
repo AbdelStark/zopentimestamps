@@ -68,6 +68,10 @@ export async function resetWallet(): Promise<void> {
   return invoke<void>("reset_wallet");
 }
 
+export async function autoLoadWallet(): Promise<WalletInfo | null> {
+  return invoke<WalletInfo | null>("auto_load_wallet");
+}
+
 export async function getBalance(): Promise<BalanceInfo> {
   return invoke<BalanceInfo>("get_balance");
 }

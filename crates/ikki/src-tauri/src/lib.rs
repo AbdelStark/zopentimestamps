@@ -24,6 +24,7 @@ pub fn run() {
             commands::wallet::check_wallet_exists,
             commands::wallet::init_wallet,
             commands::wallet::load_wallet,
+            commands::wallet::auto_load_wallet,
             commands::wallet::reset_wallet,
             commands::wallet::get_balance,
             commands::wallet::get_address,

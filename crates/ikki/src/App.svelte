@@ -2,7 +2,7 @@
   import { onMount } from "svelte";
   import { ui, currentView, needsOnboarding, toasts } from "./lib/stores/ui";
   import { wallet } from "./lib/stores/wallet";
-  import { checkWalletExists } from "./lib/utils/tauri";
+  import { checkWalletExists, autoLoadWallet } from "./lib/utils/tauri";
 
   // Views
   import Home from "./routes/Home.svelte";
@@ -21,9 +21,26 @@
   onMount(async () => {
     try {
       const exists = await checkWalletExists();
-      ui.setNeedsOnboarding(!exists);
+      if (exists) {
+        // Try to auto-load the wallet
+        const walletInfo = await autoLoadWallet();
+        if (walletInfo) {
+          wallet.setInfo({
+            address: walletInfo.address,
+            balance: walletInfo.balance,
+            blockHeight: walletInfo.block_height,
+          });
+          ui.setNeedsOnboarding(false);
+        } else {
+          // Config exists but couldn't load - show onboarding
+          ui.setNeedsOnboarding(true);
+        }
+      } else {
+        ui.setNeedsOnboarding(true);
+      }
     } catch (e) {
-      console.error("Failed to check wallet:", e);
+      console.error("Failed to load wallet:", e);
+      ui.setNeedsOnboarding(true);
     } finally {
       loading = false;
     }

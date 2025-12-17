@@ -73,8 +73,35 @@ pub async fn send_transaction(
 
 /// Get transaction history
 #[tauri::command]
-pub async fn get_transactions(_state: State<'_, AppState>) -> Result<Vec<Transaction>, String> {
-    // TODO: Implement actual transaction history retrieval from wallet
-    // For now, return empty list - the zots-zcash crate needs to expose transaction history
-    Ok(vec![])
+pub async fn get_transactions(state: State<'_, AppState>) -> Result<Vec<Transaction>, String> {
+    let wallet_lock = state.wallet.lock().await;
+    let wallet = wallet_lock
+        .as_ref()
+        .ok_or("Wallet not initialized")?;
+
+    // Get recent transactions from the wallet
+    let records = wallet
+        .get_recent_transactions(50)
+        .map_err(|e| format!("Failed to get transactions: {}", e))?;
+
+    // Convert to frontend format
+    let transactions: Vec<Transaction> = records
+        .into_iter()
+        .map(|r| Transaction {
+            txid: r.txid,
+            tx_type: if r.is_sent {
+                TransactionType::Sent
+            } else {
+                TransactionType::Received
+            },
+            amount: r.amount,
+            timestamp: r.timestamp,
+            address: None,
+            memo: r.memo,
+            status: TransactionStatus::Confirmed,
+            confirmations: 1, // Simplified - would need to calculate from block height
+        })
+        .collect();
+
+    Ok(transactions)
 }
