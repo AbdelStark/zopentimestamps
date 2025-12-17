@@ -68,11 +68,11 @@ pub enum Network {
 }
 
 impl Network {
-    /// Get the block explorer URL for this network
-    pub fn explorer_url(&self) -> &'static str {
+    /// Get the default block explorer base URL for this network
+    pub fn default_explorer_url(&self) -> &'static str {
         match self {
-            Network::Mainnet => "https://explorer.zec.rocks",
-            Network::Testnet => "https://testnet.zcashexplorer.app",
+            Network::Mainnet => "https://blockexplorer.one/zcash/mainnet",
+            Network::Testnet => "https://blockexplorer.one/zcash/testnet",
         }
     }
 
@@ -148,9 +148,15 @@ impl ZcashAttestation {
         Ok(arr)
     }
 
-    /// Get the full explorer link for this transaction
+    /// Get the full explorer link for this transaction using the default explorer
     pub fn explorer_link(&self) -> String {
-        format!("{}/tx/{}", self.network.explorer_url(), self.txid)
+        self.explorer_link_with_base(None)
+    }
+
+    /// Get the full explorer link for this transaction with an optional custom base URL
+    pub fn explorer_link_with_base(&self, custom_base: Option<&str>) -> String {
+        let base = custom_base.unwrap_or_else(|| self.network.default_explorer_url());
+        format!("{}/tx/{}", base, self.txid)
     }
 
     /// Get the block timestamp as a DateTime

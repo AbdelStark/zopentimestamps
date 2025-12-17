@@ -9,6 +9,10 @@
 //! - `ZOTS_NOSTR_NSEC`: Your Nostr secret key (nsec1... or hex format)
 //! - `ZOTS_NOSTR_RELAYS`: Comma-separated list of relay URLs
 //!
+//! Optional environment variables:
+//! - `ZOTS_ZCASH_EXPLORER`: Custom Zcash block explorer base URL
+//! - `ZOTS_NOSTR_NOTE_URL`: Custom Nostr note viewer base URL
+//!
 //! ## Commands
 //!
 //! - `publish`: Publish a proof to Nostr relays
@@ -20,6 +24,24 @@ use std::time::Duration;
 use zots_core::TimestampProof;
 
 use nostr_sdk::prelude::*;
+
+/// Default Nostr note viewer URL
+const DEFAULT_NOSTR_NOTE_URL: &str = "https://iris.to";
+
+/// Get the Zcash explorer base URL from environment or use default
+fn get_zcash_explorer_url() -> Option<String> {
+    std::env::var("ZOTS_ZCASH_EXPLORER").ok()
+}
+
+/// Get the Nostr note viewer base URL from environment or use default
+fn get_nostr_note_url() -> String {
+    std::env::var("ZOTS_NOSTR_NOTE_URL").unwrap_or_else(|_| DEFAULT_NOSTR_NOTE_URL.to_string())
+}
+
+/// Generate a Nostr note URL for viewing
+fn nostr_note_link(note_id: &str) -> String {
+    format!("{}/{}", get_nostr_note_url(), note_id)
+}
 
 /// Nostr configuration loaded from environment variables.
 pub struct NostrConfig {
@@ -86,6 +108,7 @@ const ZOTS_HASH_TAG: &str = "zots-hash";
 /// Generate a human-readable description of a timestamp proof.
 fn proof_description(proof: &TimestampProof) -> String {
     let mut desc = String::new();
+    let custom_explorer = get_zcash_explorer_url();
 
     desc.push_str("⏰ zOpenTimestamps Proof\n\n");
 
@@ -105,6 +128,7 @@ fn proof_description(proof: &TimestampProof) -> String {
 
         for (i, att) in proof.attestations.iter().enumerate() {
             let timestamp = att.timestamp();
+            let explorer_link = att.explorer_link_with_base(custom_explorer.as_deref());
             desc.push_str(&format!("🔗 Attestation #{}\n", i + 1));
             desc.push_str(&format!("   Network: {} (Zcash)\n", att.network));
             desc.push_str(&format!("   Block: {}\n", att.block_height));
@@ -113,7 +137,7 @@ fn proof_description(proof: &TimestampProof) -> String {
                 timestamp.format("%Y-%m-%d %H:%M:%S UTC")
             ));
             desc.push_str(&format!("   TX: {}\n", att.txid));
-            desc.push_str(&format!("   Explorer: {}\n\n", att.explorer_link()));
+            desc.push_str(&format!("   Explorer: {explorer_link}\n\n"));
         }
     }
 
@@ -183,10 +207,14 @@ pub async fn publish(proof_path: PathBuf) -> anyhow::Result<()> {
     print_status("Publishing event...");
     let output = client.send_event_builder(event).await?;
 
+    let note_bech32 = output.id().to_bech32()?;
+    let note_link = nostr_note_link(&note_bech32);
+
     println!();
     print_success("Proof published to Nostr!");
-    print_info("Event ID", &output.id().to_bech32()?);
+    print_info("Event ID", &note_bech32);
     print_info("Event ID (hex)", &output.id().to_hex());
+    print_link("View on Nostr", &note_link);
 
     // Show which relays received it
     let success_count = output.success.len();
@@ -200,10 +228,7 @@ pub async fn publish(proof_path: PathBuf) -> anyhow::Result<()> {
     }
 
     println!();
-    print_info(
-        "Fetch with",
-        &format!("zots nostr fetch {}", output.id().to_bech32()?),
-    );
+    print_info("Fetch with", &format!("zots nostr fetch {note_bech32}"));
 
     // Disconnect
     client.disconnect().await;
