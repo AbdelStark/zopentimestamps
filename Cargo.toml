@@ -5,7 +5,7 @@ members = [
     "crates/zots-zcash",
     "crates/zots-cli",
     "crates/zots-desktop",
-    "crates/ikki",
+    "crates/ikki/src-tauri",
 ]
 
 [workspace.package]
@@ -88,3 +88,7 @@ tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"] }
 
 # Nostr
 nostr-sdk = "0.39"
+
+# Tauri
+tauri = { version = "2", features = [] }
+tauri-build = "2"

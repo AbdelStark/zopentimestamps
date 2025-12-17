@@ -9,17 +9,21 @@ authors.workspace = true
 publish = false
 description = "Ikki - A beautiful Zcash wallet for everyone"
 
+[lib]
+name = "ikki_lib"
+crate-type = ["lib", "cdylib", "staticlib"]
+
 [[bin]]
 name = "ikki"
 path = "src/main.rs"
 
 [dependencies]
 # Core zots crates
-zots-zcash = { path = "../zots-zcash" }
+zots-zcash = { path = "../../zots-zcash" }
+zots-core = { path = "../../zots-core" }
 
-# GUI
-iced = { version = "0.13", features = ["tokio", "advanced", "qr_code"] }
-open = "5"
+# Tauri
+tauri = { workspace = true, features = [] }
 
 # Async
 tokio = { workspace = true }
@@ -31,10 +35,6 @@ thiserror.workspace = true
 # Crypto
 hex.workspace = true
 bip0039.workspace = true
-qrcode.workspace = true
-
-# Time
-chrono.workspace = true
 
 # Serialization
 serde.workspace = true
@@ -52,3 +52,6 @@ dotenvy.workspace = true
 
 # TLS
 rustls.workspace = true
+
+[build-dependencies]
+tauri-build.workspace = true
