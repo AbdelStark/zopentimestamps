@@ -3,6 +3,13 @@ name = "zots-zcash"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+authors.workspace = true
+keywords.workspace = true
+categories.workspace = true
+publish = false
 description = "Zcash integration for zOpenTimestamps - wallet, transactions, lightwalletd"
 
 [dependencies]

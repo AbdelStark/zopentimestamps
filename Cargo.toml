@@ -9,9 +9,15 @@ members = [
 [workspace.package]
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.85.0"
+rust-version = "1.88.0"
 license = "MIT"
 repository = "https://github.com/AbdelStark/zopentimestamps"
+homepage = "https://github.com/AbdelStark/zopentimestamps"
+documentation = "https://github.com/AbdelStark/zopentimestamps/blob/main/README.md"
+authors = ["AbdelStark"]
+keywords = ["zcash", "timestamp", "blockchain", "cryptography", "cli"]
+categories = ["cryptography", "command-line-utilities"]
+publish = false
 
 [workspace.dependencies]
 # Core
