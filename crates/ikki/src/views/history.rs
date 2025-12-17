@@ -4,7 +4,7 @@ use crate::app::IkkiApp;
 use crate::components::{card, empty_state, loading_spinner, transaction_item};
 use crate::message::Message;
 use crate::theme::{self, spacing, typography};
-use iced::widget::{Space, column, row, scrollable, text};
+use iced::widget::{Space, column, row, text};
 use iced::{Element, Length};
 
 /// History view showing all past transactions
@@ -41,7 +41,7 @@ pub fn view(app: &IkkiApp) -> Element<Message> {
         Space::with_height(spacing::XXS),
         subtitle,
         Space::with_height(spacing::LG),
-        scrollable(column![transaction_list]),
+        transaction_list,
     ]
     .width(Length::Fill)
     .max_width(600)
