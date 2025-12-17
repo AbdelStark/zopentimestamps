@@ -3,7 +3,7 @@
 use crate::app::ZotsApp;
 use crate::message::Message;
 use crate::theme;
-use iced::widget::{button, column, container, row, text, text_input, Space};
+use iced::widget::{Space, button, column, container, row, text, text_input};
 use iced::{Alignment, Element, Length};
 
 pub fn view(app: &ZotsApp) -> Element<Message> {
@@ -101,8 +101,14 @@ pub fn view(app: &ZotsApp) -> Element<Message> {
         container(Space::with_height(0))
     };
 
-    let buttons = row![save_btn, Space::with_width(12), reset_btn, Space::with_width(24), saved_indicator,]
-        .align_y(Alignment::Center);
+    let buttons = row![
+        save_btn,
+        Space::with_width(12),
+        reset_btn,
+        Space::with_width(24),
+        saved_indicator,
+    ]
+    .align_y(Alignment::Center);
 
     // About section
     let about_section = container(

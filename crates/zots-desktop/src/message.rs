@@ -13,15 +13,9 @@ pub enum Message {
     SeedInputChanged(String),
     SaveSeed,
     SyncWallet,
-    WalletSynced {
-        block_height: u64,
-        balance: u64,
-    },
+    WalletSynced { block_height: u64, balance: u64 },
     WalletSyncFailed(String),
-    InitialSyncComplete {
-        block_height: u64,
-        balance: u64,
-    },
+    InitialSyncComplete { block_height: u64, balance: u64 },
     InitialSyncFailed,
 
     // Stamp operations

@@ -183,10 +183,9 @@ pub mod button_style {
             )
         } else {
             match status {
-                button::Status::Hovered => (
-                    Some(Background::Color(colors::SURFACE_LIGHT)),
-                    colors::TEXT,
-                ),
+                button::Status::Hovered => {
+                    (Some(Background::Color(colors::SURFACE_LIGHT)), colors::TEXT)
+                }
                 _ => (None, colors::TEXT_MUTED),
             }
         };

@@ -3,7 +3,7 @@
 use crate::app::ZotsApp;
 use crate::message::Message;
 use crate::theme::{self, colors};
-use iced::widget::{button, column, container, horizontal_space, row, scrollable, text, Space};
+use iced::widget::{Space, button, column, container, horizontal_space, row, scrollable, text};
 use iced::{Alignment, Color, Element, Length};
 
 pub fn view(app: &ZotsApp) -> Element<Message> {
@@ -14,15 +14,26 @@ pub fn view(app: &ZotsApp) -> Element<Message> {
     ]
     .align_y(Alignment::Center);
 
-    let description = text("View and manage your timestamp proofs (.zots files in current directory)")
-        .size(14)
-        .style(theme::text_style::muted());
+    let description =
+        text("View and manage your timestamp proofs (.zots files in current directory)")
+            .size(14)
+            .style(theme::text_style::muted());
 
     let refresh_btn = button(
         row![
-            text(if app.history_loading { app.spinner() } else { ">" }).size(14),
+            text(if app.history_loading {
+                app.spinner()
+            } else {
+                ">"
+            })
+            .size(14),
             Space::with_width(8),
-            text(if app.history_loading { "Loading..." } else { "Refresh" }).size(14),
+            text(if app.history_loading {
+                "Loading..."
+            } else {
+                "Refresh"
+            })
+            .size(14),
         ]
         .align_y(Alignment::Center),
     )
@@ -113,7 +124,9 @@ pub fn view(app: &ZotsApp) -> Element<Message> {
                         column![
                             text(filename).size(14),
                             Space::with_height(4),
-                            text(hash_display).size(12).style(theme::text_style::accent()),
+                            text(hash_display)
+                                .size(12)
+                                .style(theme::text_style::accent()),
                             Space::with_height(2),
                             text(details).size(11).style(theme::text_style::dim()),
                         ]

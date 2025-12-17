@@ -3,7 +3,7 @@
 use crate::app::ZotsApp;
 use crate::message::Message;
 use crate::theme::{self, colors};
-use iced::widget::{button, column, container, row, text, text_input, Space};
+use iced::widget::{Space, button, column, container, row, text, text_input};
 use iced::{Alignment, Element, Length};
 
 pub fn view(app: &ZotsApp) -> Element<Message> {
@@ -31,8 +31,12 @@ pub fn view(app: &ZotsApp) -> Element<Message> {
     .on_input(Message::VerifyFileInputChanged);
 
     let browse_file_btn = button(
-        row![text("...").size(14), Space::with_width(8), text("Browse").size(14),]
-            .align_y(Alignment::Center),
+        row![
+            text("...").size(14),
+            Space::with_width(8),
+            text("Browse").size(14),
+        ]
+        .align_y(Alignment::Center),
     )
     .padding([12, 16])
     .style(theme::button_style::secondary)
@@ -52,8 +56,12 @@ pub fn view(app: &ZotsApp) -> Element<Message> {
         .on_input(Message::VerifyProofInputChanged);
 
     let browse_proof_btn = button(
-        row![text("...").size(14), Space::with_width(8), text("Browse").size(14),]
-            .align_y(Alignment::Center),
+        row![
+            text("...").size(14),
+            Space::with_width(8),
+            text("Browse").size(14),
+        ]
+        .align_y(Alignment::Center),
     )
     .padding([12, 16])
     .style(theme::button_style::secondary)
@@ -128,7 +136,10 @@ pub fn view(app: &ZotsApp) -> Element<Message> {
         } else {
             colors::ERROR
         };
-        let error_text = result.error.as_ref().map(|e| text(e).size(13).color(error_color));
+        let error_text = result
+            .error
+            .as_ref()
+            .map(|e| text(e).size(13).color(error_color));
 
         let mut content_col = column![
             row![
@@ -282,7 +293,9 @@ fn info_row(label: &'static str, value: String) -> Element<'static, Message> {
                 .size(13)
                 .style(theme::text_style::muted())
                 .width(100),
-            text(display_value).size(13).style(theme::text_style::accent()),
+            text(display_value)
+                .size(13)
+                .style(theme::text_style::accent()),
         ]
         .align_y(Alignment::Center)
         .padding([4, 0]),

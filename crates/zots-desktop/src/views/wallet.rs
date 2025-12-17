@@ -3,7 +3,7 @@
 use crate::app::ZotsApp;
 use crate::message::Message;
 use crate::theme::{self, colors};
-use iced::widget::{button, column, container, horizontal_space, row, text, text_input, Space};
+use iced::widget::{Space, button, column, container, horizontal_space, row, text, text_input};
 use iced::{Alignment, Element, Length};
 
 pub fn view(app: &ZotsApp) -> Element<Message> {
@@ -121,17 +121,15 @@ pub fn view(app: &ZotsApp) -> Element<Message> {
 
         // Add error display if present
         let wallet_col = if let Some(error) = &app.wallet_error {
-            wallet_col.push(
-                container(
-                    row![
-                        text("!").size(14).color(colors::ERROR),
-                        Space::with_width(8),
-                        text(error).size(12).color(colors::ERROR),
-                    ]
-                    .align_y(Alignment::Center)
-                    .padding([12, 0]),
-                ),
-            )
+            wallet_col.push(container(
+                row![
+                    text("!").size(14).color(colors::ERROR),
+                    Space::with_width(8),
+                    text(error).size(12).color(colors::ERROR),
+                ]
+                .align_y(Alignment::Center)
+                .padding([12, 0]),
+            ))
         } else {
             wallet_col
         };

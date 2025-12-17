@@ -3,7 +3,7 @@
 use crate::app::ZotsApp;
 use crate::message::Message;
 use crate::theme::{self, colors};
-use iced::widget::{button, column, container, row, text, text_input, Space};
+use iced::widget::{Space, button, column, container, row, text, text_input};
 use iced::{Alignment, Element, Length};
 
 pub fn view(app: &ZotsApp) -> Element<Message> {
@@ -28,8 +28,12 @@ pub fn view(app: &ZotsApp) -> Element<Message> {
         .on_input(Message::StampInputChanged);
 
     let browse_btn = button(
-        row![text("...").size(14), Space::with_width(8), text("Browse").size(14),]
-            .align_y(Alignment::Center),
+        row![
+            text("...").size(14),
+            Space::with_width(8),
+            text("Browse").size(14),
+        ]
+        .align_y(Alignment::Center),
     )
     .padding([12, 16])
     .style(theme::button_style::secondary)
@@ -113,11 +117,8 @@ pub fn view(app: &ZotsApp) -> Element<Message> {
 
         if result.pending {
             content_col = content_col.push(Space::with_height(8));
-            content_col = content_col.push(
-                text(status_text)
-                    .size(12)
-                    .style(theme::text_style::muted()),
-            );
+            content_col =
+                content_col.push(text(status_text).size(12).style(theme::text_style::muted()));
         }
 
         content_col = content_col.push(Space::with_height(16));
@@ -176,7 +177,9 @@ pub fn view(app: &ZotsApp) -> Element<Message> {
                 row![
                     text("✗").size(20).style(theme::text_style::error()),
                     Space::with_width(12),
-                    text("Stamp Failed").size(16).style(theme::text_style::error()),
+                    text("Stamp Failed")
+                        .size(16)
+                        .style(theme::text_style::error()),
                 ]
                 .align_y(Alignment::Center),
                 Space::with_height(12),
@@ -229,7 +232,9 @@ fn info_row(label: &'static str, value: String, copyable: bool) -> Element<'stat
     } else {
         value.clone()
     };
-    let value_text = text(display_value).size(13).style(theme::text_style::accent());
+    let value_text = text(display_value)
+        .size(13)
+        .style(theme::text_style::accent());
 
     let mut r = row![
         text(format!("{label}:"))

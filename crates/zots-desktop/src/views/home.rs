@@ -3,7 +3,7 @@
 use crate::app::ZotsApp;
 use crate::message::{Message, View};
 use crate::theme::{self, colors};
-use iced::widget::{button, column, container, horizontal_space, row, text, Space};
+use iced::widget::{Space, button, column, container, horizontal_space, row, text};
 use iced::{Alignment, Element, Length};
 
 pub fn view(app: &ZotsApp) -> Element<Message> {
@@ -11,9 +11,11 @@ pub fn view(app: &ZotsApp) -> Element<Message> {
         .size(28)
         .style(theme::text_style::primary());
 
-    let subtitle = text("Timestamp files on the Zcash blockchain with privacy-preserving shielded transactions")
-        .size(14)
-        .style(theme::text_style::muted());
+    let subtitle = text(
+        "Timestamp files on the Zcash blockchain with privacy-preserving shielded transactions",
+    )
+    .size(14)
+    .style(theme::text_style::muted());
 
     // Quick stats
     let balance_zec = app.balance as f64 / 100_000_000.0;
@@ -59,7 +61,13 @@ pub fn view(app: &ZotsApp) -> Element<Message> {
         View::Wallet,
     );
 
-    let actions = row![stamp_action, Space::with_width(16), verify_action, Space::with_width(16), wallet_action,];
+    let actions = row![
+        stamp_action,
+        Space::with_width(16),
+        verify_action,
+        Space::with_width(16),
+        wallet_action,
+    ];
 
     // Security warning
     let warning = container(
@@ -142,18 +150,12 @@ fn stat_card(label: &'static str, value: String) -> Element<'static, Message> {
     .into()
 }
 
-fn action_card<'a>(
-    title: &'a str,
-    description: &'a str,
-    target: View,
-) -> Element<'a, Message> {
+fn action_card<'a>(title: &'a str, description: &'a str, target: View) -> Element<'a, Message> {
     button(
         column![
             text(title).size(16),
             Space::with_height(8),
-            text(description)
-                .size(12)
-                .style(theme::text_style::muted()),
+            text(description).size(12).style(theme::text_style::muted()),
         ]
         .padding(20)
         .align_x(Alignment::Center),

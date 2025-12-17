@@ -4,7 +4,7 @@ use crate::message::{HistoryEntry, Message, StampPhase, StampResult, VerifyResul
 use crate::theme;
 use crate::views;
 use anyhow::Result;
-use iced::widget::{button, column, container, horizontal_space, row, text, Space};
+use iced::widget::{Space, button, column, container, horizontal_space, row, text};
 use iced::{Element, Font, Length, Subscription, Task};
 use std::path::PathBuf;
 use std::time::Duration;
@@ -292,7 +292,9 @@ impl ZotsApp {
                 Task::none()
             }
             Message::SelectVerifyFile => Task::perform(pick_file(), Message::VerifyFileSelected),
-            Message::SelectProofFile => Task::perform(pick_proof_file(), Message::ProofFileSelected),
+            Message::SelectProofFile => {
+                Task::perform(pick_proof_file(), Message::ProofFileSelected)
+            }
             Message::VerifyFileSelected(path) => {
                 if let Some(p) = path {
                     self.verify_file_input = p.display().to_string();
@@ -573,7 +575,10 @@ impl ZotsApp {
                 "explorer_url": self.explorer_url,
                 "lightwalletd_url": self.lightwalletd_url,
             });
-            let _ = std::fs::write(&settings_path, serde_json::to_string_pretty(&settings).unwrap());
+            let _ = std::fs::write(
+                &settings_path,
+                serde_json::to_string_pretty(&settings).unwrap(),
+            );
         }
     }
 
@@ -609,7 +614,7 @@ async fn run_stamp(
 ) -> Result<StampResult> {
     use std::path::Path;
     use zots_core::{
-        hash_file_with, hash_from_hex_with, hash_to_hex, TimestampProof, ZcashAttestation,
+        TimestampProof, ZcashAttestation, hash_file_with, hash_from_hex_with, hash_to_hex,
     };
     use zots_zcash::ZotsWallet;
 
@@ -680,7 +685,7 @@ async fn run_verify(
     file_input: String,
     proof_path: PathBuf,
 ) -> Result<VerifyResult> {
-    use zots_core::{hash_file_with, hash_from_hex_with, TimestampProof};
+    use zots_core::{TimestampProof, hash_file_with, hash_from_hex_with};
     use zots_zcash::ZotsWallet;
 
     // Load proof
