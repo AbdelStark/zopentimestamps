@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>zOpenTimestamps - Zcash Blockchain Timestamping</title>
+  <meta name="description" content="Timestamp files and hashes on the Zcash blockchain with privacy-preserving shielded transactions">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-zots-darker text-gray-100 font-mono min-h-screen">
+  <div id="app" class="min-h-screen flex flex-col">
+    <!-- Header -->
+    <header class="bg-zots-dark border-b border-gray-800">
+      <div class="container mx-auto px-4 py-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-3">
+            <span class="text-2xl">⏰</span>
+            <h1 class="text-xl font-bold text-white">zOpenTimestamps</h1>
+          </div>
+          <nav class="flex items-center space-x-4">
+            <button id="nav-hash" class="nav-btn active">Hash</button>
+            <button id="nav-encode" class="nav-btn">Encode</button>
+            <button id="nav-decode" class="nav-btn">Decode</button>
+            <button id="nav-qr" class="nav-btn">QR Code</button>
+            <button id="nav-settings" class="nav-btn">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+              </svg>
+            </button>
+          </nav>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 container mx-auto px-4 py-8">
+      <!-- Hash View -->
+      <section id="view-hash" class="view">
+        <div class="max-w-2xl mx-auto">
+          <div class="bg-zots-dark rounded-xl border border-gray-800 p-6">
+            <h2 class="text-lg font-semibold mb-4 flex items-center">
+              <span class="text-2xl mr-2">📄</span>
+              Hash File or Data
+            </h2>
+
+            <!-- File Upload -->
+            <div id="drop-zone" class="border-2 border-dashed border-gray-700 rounded-lg p-8 text-center hover:border-zots-primary transition-colors cursor-pointer mb-6">
+              <input type="file" id="file-input" class="hidden" />
+              <div class="text-gray-400">
+                <svg class="w-12 h-12 mx-auto mb-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                </svg>
+                <p class="text-lg mb-2">Drop a file here or click to upload</p>
+                <p class="text-sm text-gray-500">Supports any file type</p>
+              </div>
+            </div>
+
+            <!-- Algorithm Selection -->
+            <div class="mb-6">
+              <label class="block text-sm text-gray-400 mb-2">Hash Algorithm</label>
+              <div class="flex space-x-4">
+                <label class="flex items-center">
+                  <input type="radio" name="algorithm" value="sha256" checked class="mr-2 accent-zots-primary">
+                  <span>SHA-256</span>
+                </label>
+                <label class="flex items-center">
+                  <input type="radio" name="algorithm" value="blake3" class="mr-2 accent-zots-primary">
+                  <span>BLAKE3</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Or Enter Hash -->
+            <div class="mb-6">
+              <label class="block text-sm text-gray-400 mb-2">Or enter a hash directly</label>
+              <input type="text" id="hash-input" placeholder="64-char hex hash or 40-char git commit" class="input-field">
+            </div>
+
+            <!-- Hash Button -->
+            <button id="hash-btn" class="btn-primary w-full mb-4" disabled>
+              <span class="mr-2">🔐</span> Calculate Hash
+            </button>
+
+            <!-- Result -->
+            <div id="hash-result" class="hidden">
+              <div class="bg-zots-darker rounded-lg p-4 border border-gray-700">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-sm text-gray-400">Hash Result</span>
+                  <button id="copy-hash" class="text-sm text-zots-primary hover:text-zots-secondary">Copy</button>
+                </div>
+                <code id="hash-output" class="text-sm text-zots-accent break-all block"></code>
+                <div class="mt-4 flex space-x-2">
+                  <button id="create-proof-btn" class="btn-secondary text-sm">Create Proof</button>
+                  <button id="generate-qr-btn" class="btn-secondary text-sm">Generate QR</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Encode View -->
+      <section id="view-encode" class="view hidden">
+        <div class="max-w-2xl mx-auto">
+          <div class="bg-zots-dark rounded-xl border border-gray-800 p-6">
+            <h2 class="text-lg font-semibold mb-4 flex items-center">
+              <span class="text-2xl mr-2">📦</span>
+              Encode Proof to Compact Format
+            </h2>
+
+            <!-- JSON Input -->
+            <div class="mb-6">
+              <label class="block text-sm text-gray-400 mb-2">Proof JSON</label>
+              <textarea id="encode-input" rows="10" placeholder='{"version": 1, "hash": "...", ...}' class="input-field font-mono text-sm"></textarea>
+            </div>
+
+            <!-- Upload Proof File -->
+            <div class="mb-6">
+              <label class="block text-sm text-gray-400 mb-2">Or upload a .zots file</label>
+              <input type="file" id="proof-file-input" accept=".zots,.json" class="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-zots-primary file:text-white hover:file:bg-zots-secondary file:cursor-pointer cursor-pointer">
+            </div>
+
+            <button id="encode-btn" class="btn-primary w-full mb-4">
+              <span class="mr-2">📝</span> Encode to Compact
+            </button>
+
+            <!-- Result -->
+            <div id="encode-result" class="hidden">
+              <div class="bg-zots-darker rounded-lg p-4 border border-gray-700">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-sm text-gray-400">Compact Format</span>
+                  <button id="copy-compact" class="text-sm text-zots-primary hover:text-zots-secondary">Copy</button>
+                </div>
+                <code id="compact-output" class="text-sm text-zots-accent break-all block"></code>
+                <p id="compact-size" class="text-xs text-gray-500 mt-2"></p>
+                <div class="mt-4">
+                  <button id="compact-qr-btn" class="btn-secondary text-sm">Generate QR Code</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Decode View -->
+      <section id="view-decode" class="view hidden">
+        <div class="max-w-2xl mx-auto">
+          <div class="bg-zots-dark rounded-xl border border-gray-800 p-6">
+            <h2 class="text-lg font-semibold mb-4 flex items-center">
+              <span class="text-2xl mr-2">🔓</span>
+              Decode Compact Proof
+            </h2>
+
+            <!-- Compact Input -->
+            <div class="mb-6">
+              <label class="block text-sm text-gray-400 mb-2">Compact Proof (zots1...)</label>
+              <textarea id="decode-input" rows="4" placeholder="zots1o2d2ZXJzaW9u..." class="input-field font-mono text-sm"></textarea>
+            </div>
+
+            <button id="decode-btn" class="btn-primary w-full mb-4">
+              <span class="mr-2">🔍</span> Decode Proof
+            </button>
+
+            <!-- Result -->
+            <div id="decode-result" class="hidden">
+              <div class="bg-zots-darker rounded-lg p-4 border border-gray-700">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-sm text-gray-400">Proof Information</span>
+                  <div class="flex space-x-2">
+                    <button id="copy-json" class="text-sm text-zots-primary hover:text-zots-secondary">Copy JSON</button>
+                    <button id="download-proof" class="text-sm text-zots-primary hover:text-zots-secondary">Download .zots</button>
+                  </div>
+                </div>
+                <div id="proof-info" class="text-sm space-y-2"></div>
+                <details class="mt-4">
+                  <summary class="text-sm text-gray-400 cursor-pointer hover:text-gray-300">Raw JSON</summary>
+                  <pre id="json-output" class="text-xs text-gray-300 mt-2 overflow-x-auto bg-black/30 p-2 rounded"></pre>
+                </details>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- QR Code View -->
+      <section id="view-qr" class="view hidden">
+        <div class="max-w-2xl mx-auto">
+          <div class="bg-zots-dark rounded-xl border border-gray-800 p-6">
+            <h2 class="text-lg font-semibold mb-4 flex items-center">
+              <span class="text-2xl mr-2">📱</span>
+              QR Code Generator & Scanner
+            </h2>
+
+            <!-- Tabs -->
+            <div class="flex space-x-2 mb-6">
+              <button id="qr-tab-generate" class="qr-tab active">Generate</button>
+              <button id="qr-tab-scan" class="qr-tab">Scan</button>
+            </div>
+
+            <!-- Generate Tab -->
+            <div id="qr-generate-panel">
+              <div class="mb-6">
+                <label class="block text-sm text-gray-400 mb-2">Data to encode (hash or compact proof)</label>
+                <textarea id="qr-data-input" rows="3" placeholder="Enter hash or zots1... compact proof" class="input-field font-mono text-sm"></textarea>
+              </div>
+
+              <button id="generate-qr-main-btn" class="btn-primary w-full mb-4">
+                <span class="mr-2">✨</span> Generate QR Code
+              </button>
+
+              <div id="qr-output" class="hidden text-center">
+                <div id="qr-canvas" class="inline-block bg-white p-4 rounded-lg"></div>
+                <div class="mt-4">
+                  <button id="download-qr" class="btn-secondary text-sm">Download QR</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Scan Tab -->
+            <div id="qr-scan-panel" class="hidden">
+              <div id="qr-reader" class="mb-4"></div>
+              <button id="start-scan" class="btn-primary w-full mb-4">
+                <span class="mr-2">📸</span> Start Camera
+              </button>
+              <div id="scan-result" class="hidden">
+                <div class="bg-zots-darker rounded-lg p-4 border border-gray-700">
+                  <div class="flex items-center justify-between mb-2">
+                    <span class="text-sm text-gray-400">Scanned Data</span>
+                    <button id="copy-scanned" class="text-sm text-zots-primary hover:text-zots-secondary">Copy</button>
+                  </div>
+                  <code id="scanned-output" class="text-sm text-zots-accent break-all block"></code>
+                  <div id="scan-actions" class="mt-4 flex space-x-2"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Settings View -->
+      <section id="view-settings" class="view hidden">
+        <div class="max-w-2xl mx-auto">
+          <div class="bg-zots-dark rounded-xl border border-gray-800 p-6">
+            <h2 class="text-lg font-semibold mb-4 flex items-center">
+              <span class="text-2xl mr-2">⚙️</span>
+              Settings
+            </h2>
+
+            <!-- Warning Banner -->
+            <div class="bg-zots-warning/10 border border-zots-warning/30 rounded-lg p-4 mb-6">
+              <div class="flex items-start">
+                <span class="text-2xl mr-3">⚠️</span>
+                <div>
+                  <h3 class="font-semibold text-zots-warning">Security Warning</h3>
+                  <p class="text-sm text-gray-300 mt-1">
+                    This webapp runs entirely in your browser. <strong>Never enter seed phrases or private keys used on mainnet.</strong>
+                    Use only testnet wallets for development and testing purposes.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Explorer Settings -->
+            <div class="space-y-6">
+              <div>
+                <h3 class="text-md font-medium mb-3">Block Explorer</h3>
+                <div class="space-y-4">
+                  <div>
+                    <label class="block text-sm text-gray-400 mb-2">Zcash Explorer URL</label>
+                    <input type="text" id="setting-explorer" placeholder="https://blockexplorer.one/zcash/testnet" class="input-field">
+                    <p class="text-xs text-gray-500 mt-1">Base URL for viewing Zcash transactions</p>
+                  </div>
+                  <div>
+                    <label class="block text-sm text-gray-400 mb-2">Network</label>
+                    <select id="setting-network" class="input-field">
+                      <option value="testnet">Testnet (Recommended)</option>
+                      <option value="mainnet">Mainnet</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h3 class="text-md font-medium mb-3">Nostr Integration</h3>
+                <div class="space-y-4">
+                  <div>
+                    <label class="block text-sm text-gray-400 mb-2">Nostr Note Viewer URL</label>
+                    <input type="text" id="setting-nostr-viewer" placeholder="https://iris.to" class="input-field">
+                    <p class="text-xs text-gray-500 mt-1">Base URL for viewing Nostr notes</p>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h3 class="text-md font-medium mb-3">Default Hash Algorithm</h3>
+                <select id="setting-algorithm" class="input-field">
+                  <option value="sha256">SHA-256 (Default)</option>
+                  <option value="blake3">BLAKE3</option>
+                </select>
+              </div>
+
+              <div class="pt-4 border-t border-gray-700">
+                <button id="save-settings" class="btn-primary">
+                  <span class="mr-2">💾</span> Save Settings
+                </button>
+                <button id="reset-settings" class="btn-secondary ml-2">
+                  Reset to Defaults
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- About Section -->
+          <div class="bg-zots-dark rounded-xl border border-gray-800 p-6 mt-6">
+            <h2 class="text-lg font-semibold mb-4 flex items-center">
+              <span class="text-2xl mr-2">ℹ️</span>
+              About
+            </h2>
+            <p class="text-gray-300 text-sm mb-4">
+              zOpenTimestamps is a Zcash blockchain timestamping tool inspired by OpenTimestamps.
+              Timestamp any file or hash on the Zcash blockchain to create cryptographic proof that data existed at a specific point in time.
+            </p>
+            <div class="flex items-center space-x-4 text-sm">
+              <a href="https://github.com/AbdelStark/zopentimestamps" target="_blank" class="text-zots-primary hover:text-zots-secondary flex items-center">
+                <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                GitHub
+              </a>
+              <span class="text-gray-500">v0.1.1</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-zots-dark border-t border-gray-800 py-4">
+      <div class="container mx-auto px-4 text-center text-sm text-gray-500">
+        <p>⚠️ Experimental software - Testnet only - Not audited</p>
+      </div>
+    </footer>
+
+    <!-- Toast Notifications -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-50 space-y-2"></div>
+  </div>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
