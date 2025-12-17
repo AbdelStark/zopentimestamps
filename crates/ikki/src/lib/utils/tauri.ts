@@ -87,7 +87,7 @@ export async function sendTransaction(
   memo?: string
 ): Promise<SendResult> {
   return invoke<SendResult>("send_transaction", {
-    to_address: toAddress,
+    toAddress,
     amount,
     memo: memo || null,
   });
