@@ -4,6 +4,7 @@ members = [
     "crates/zots-core",
     "crates/zots-zcash",
     "crates/zots-cli",
+    "crates/zots-desktop",
 ]
 
 [workspace.package]

@@ -1,0 +1,57 @@
+[package]
+name = "zots-desktop"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+description = "zOpenTimestamps Desktop Application - Zcash blockchain timestamping"
+
+[[bin]]
+name = "zots-desktop"
+path = "src/main.rs"
+
+[dependencies]
+# Core zots crates
+zots-core = { path = "../zots-core" }
+zots-zcash = { path = "../zots-zcash" }
+
+# GUI
+iced = { version = "0.13", features = ["tokio", "advanced"] }
+open = "5"
+
+# Async
+tokio = { workspace = true }
+
+# Error handling
+anyhow.workspace = true
+thiserror.workspace = true
+
+# Crypto
+hex.workspace = true
+bip0039.workspace = true
+
+# Time
+chrono.workspace = true
+
+# Serialization
+serde.workspace = true
+serde_json.workspace = true
+
+# File dialog
+rfd = "0.15"
+
+# Directories
+dirs.workspace = true
+
+# Logging
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+# Environment
+dotenvy.workspace = true
+
+# TLS
+rustls.workspace = true

@@ -98,4 +98,25 @@ impl ZcashConfig {
         std::fs::create_dir_all(&self.data_dir)?;
         Ok(self.data_dir.clone())
     }
+
+    /// Create configuration from a seed phrase with defaults
+    pub fn from_seed(seed_phrase: &str) -> anyhow::Result<Self> {
+        // Validate seed phrase (basic check)
+        let words: Vec<&str> = seed_phrase.split_whitespace().collect();
+        if words.len() != 24 {
+            anyhow::bail!("Seed phrase must be 24 words, got {}", words.len());
+        }
+
+        let data_dir = dirs::home_dir()
+            .unwrap_or_else(|| PathBuf::from("."))
+            .join(".zopentimestamps");
+
+        Ok(Self {
+            seed_phrase: seed_phrase.to_string(),
+            birthday_height: 3717528,
+            lightwalletd_url: "https://testnet.zec.rocks:443".to_string(),
+            data_dir,
+            network: Network::Testnet,
+        })
+    }
 }
