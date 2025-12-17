@@ -33,6 +33,7 @@ colored.workspace = true
 indicatif.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
+qrcode.workspace = true
 
 # Async
 tokio.workspace = true

@@ -12,7 +12,7 @@ use crate::output::*;
 use std::path::PathBuf;
 use zots_core::TimestampProof;
 
-pub fn run(input: String) -> anyhow::Result<()> {
+pub fn run(input: String, show_qr: bool) -> anyhow::Result<()> {
     print_header("Encoding Proof");
 
     // Check if input is a file path or already compact format
@@ -38,6 +38,9 @@ pub fn run(input: String) -> anyhow::Result<()> {
     println!("{compact}");
     println!();
     print_info("Length", &format!("{} chars", compact.len()));
+    if show_qr {
+        print_qr("QR Code", &compact)?;
+    }
 
     // Show what's embedded
     println!();

@@ -59,6 +59,7 @@ rand = "0.8"
 rand_core = "0.6"
 zip32 = "0.2"
 blake3 = "1.5"
+qrcode = { version = "0.14", default-features = false }
 
 # Storage
 rusqlite = { version = "0.37", features = ["bundled"] }

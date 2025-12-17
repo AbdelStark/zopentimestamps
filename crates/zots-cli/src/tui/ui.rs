@@ -7,6 +7,7 @@
 //! - Detailed result displays for stamp and verify operations
 
 use chrono::{DateTime, Utc};
+use qrcode::{QrCode, render::unicode};
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},
@@ -285,6 +286,20 @@ fn draw_stamp(f: &mut Frame, area: Rect, app: &App) {
                         Style::default().fg(Color::White),
                     ),
                 ]));
+                content.push(Line::from(Span::styled(
+                    "  [Q] Toggle QR code",
+                    Style::default().fg(Color::Gray),
+                )));
+                if app.qr_visible {
+                    content.push(Line::from(""));
+                    content.push(Line::from(Span::styled(
+                        "  QR Code:",
+                        Style::default().fg(Color::Gray),
+                    )));
+                    for line in qr_lines(app.qr_data.as_deref().unwrap_or_default()) {
+                        content.push(line);
+                    }
+                }
             }
             content.push(Line::from(""));
             content.push(Line::from(Span::styled(
@@ -530,6 +545,21 @@ fn draw_verify(f: &mut Frame, area: Rect, app: &App) {
                         Span::styled(&result.explorer_link, Style::default().fg(Color::Blue)),
                     ]));
                 }
+
+                content.push(Line::from(Span::styled(
+                    "  [Q] Toggle QR code",
+                    Style::default().fg(Color::Gray),
+                )));
+                if app.qr_visible {
+                    content.push(Line::from(""));
+                    content.push(Line::from(Span::styled(
+                        "  QR Code:",
+                        Style::default().fg(Color::Gray),
+                    )));
+                    for line in qr_lines(app.qr_data.as_deref().unwrap_or_default()) {
+                        content.push(line);
+                    }
+                }
             }
 
             content.push(Line::from(""));
@@ -652,4 +682,31 @@ fn draw_status_bar(f: &mut Frame, area: Rect, app: &App) {
     ]))
     .block(Block::default().borders(Borders::ALL).title("Status"));
     f.render_widget(status, area);
+}
+
+fn qr_lines(data: &str) -> Vec<Line<'static>> {
+    if data.is_empty() {
+        return vec![Line::from(Span::styled(
+            "  (no compact proof available)",
+            Style::default().fg(Color::Red),
+        ))];
+    }
+
+    match QrCode::new(data.as_bytes()) {
+        Ok(code) => {
+            let rendered = code
+                .render::<unicode::Dense1x2>()
+                .dark_color(unicode::Dense1x2::Dark)
+                .light_color(unicode::Dense1x2::Light)
+                .build();
+            rendered
+                .lines()
+                .map(|l| Line::from(Span::raw(l.to_string())))
+                .collect()
+        }
+        Err(_) => vec![Line::from(Span::styled(
+            "  (failed to render QR code)",
+            Style::default().fg(Color::Red),
+        ))],
+    }
 }

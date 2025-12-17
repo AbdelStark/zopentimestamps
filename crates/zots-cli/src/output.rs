@@ -1,6 +1,7 @@
 //! Colored CLI output helpers
 
 use colored::*;
+use qrcode::{QrCode, render::unicode};
 
 /// Print a header with underline
 pub fn print_header(text: &str) {
@@ -53,4 +54,24 @@ pub fn print_link(label: &str, url: &str) {
 /// Print a status line (for progress updates)
 pub fn print_status(text: &str) {
     println!("  {} {}", "→".cyan(), text);
+}
+
+/// Render a QR code as a string for terminal display
+pub fn render_qr(data: &str) -> anyhow::Result<String> {
+    let code = QrCode::new(data.as_bytes())?;
+    let rendered = code
+        .render::<unicode::Dense1x2>()
+        .dark_color(unicode::Dense1x2::Dark)
+        .light_color(unicode::Dense1x2::Light)
+        .build();
+    Ok(rendered)
+}
+
+/// Print a QR code with a label
+pub fn print_qr(label: &str, data: &str) -> anyhow::Result<()> {
+    println!();
+    print_header(label);
+    let qr = render_qr(data)?;
+    println!("{qr}");
+    Ok(())
 }

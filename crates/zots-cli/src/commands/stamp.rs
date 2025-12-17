@@ -23,6 +23,7 @@ pub async fn run(
     hash: Option<String>,
     output: Option<PathBuf>,
     hash_algorithm: HashAlgorithm,
+    show_qr: bool,
     no_wait: bool,
 ) -> anyhow::Result<()> {
     info!("Starting stamp operation");
@@ -107,12 +108,16 @@ pub async fn run(
 
     if no_wait {
         print_warning("Not waiting for confirmation - proof will be pending");
+        let compact = proof.to_compact()?;
         proof.save(&output_path)?;
         print_success(&format!("Pending proof saved: {}", output_path.display()));
 
         // Show compact format for embedding
         println!();
-        print_info("Compact", &proof.to_compact()?);
+        print_info("Compact", &compact);
+        if show_qr {
+            print_qr("QR Code", &compact)?;
+        }
         return Ok(());
     }
 
@@ -144,6 +149,9 @@ pub async fn run(
     println!("{compact}");
     println!();
     print_info("Length", &format!("{} chars", compact.len()));
+    if show_qr {
+        print_qr("QR Code", &compact)?;
+    }
 
     Ok(())
 }

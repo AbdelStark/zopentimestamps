@@ -52,6 +52,10 @@ pub enum Commands {
         #[arg(long, value_enum, default_value_t = HashAlgorithmArg::Sha256, value_name = "ALGO")]
         hash_algorithm: HashAlgorithmArg,
 
+        /// Display QR code for the compact proof output
+        #[arg(long)]
+        qr: bool,
+
         /// Don't wait for confirmation (create pending proof)
         #[arg(long)]
         no_wait: bool,
@@ -77,6 +81,10 @@ pub enum Commands {
     Encode {
         /// Proof file (.zots) or compact string to encode
         input: String,
+
+        /// Display QR code for the compact proof output
+        #[arg(long)]
+        qr: bool,
     },
 
     /// Decode a compact proof string to JSON

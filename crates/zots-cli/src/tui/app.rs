@@ -126,6 +126,10 @@ pub struct App {
     pub stamp_result: Option<StampResult>,
     /// Verify result details for display
     pub verify_result: Option<VerifyResult>,
+    /// Whether QR overlay is showing
+    pub qr_visible: bool,
+    /// Cached compact proof for QR rendering
+    pub qr_data: Option<String>,
     /// Channel receiver for background task updates
     task_rx: mpsc::Receiver<TaskMessage>,
     /// Channel sender for background tasks (cloned when spawning)
@@ -151,6 +155,7 @@ pub struct StampResult {
 pub struct VerifyResult {
     pub hash: String,
     pub algorithm: HashAlgorithm,
+    pub compact: String,
     pub valid: bool,
     pub network: String,
     pub block_height: u32,
@@ -203,6 +208,8 @@ impl App {
             verify_hash: None,
             stamp_result: None,
             verify_result: None,
+            qr_visible: false,
+            qr_data: None,
             task_rx,
             task_tx,
             task_running,
@@ -228,16 +235,22 @@ impl App {
                 TaskMessage::StampComplete(result) => {
                     self.stamp_result = Some(result);
                     self.operation_phase = OperationPhase::Complete;
+                    self.qr_data = self.stamp_result.as_ref().map(|r| r.compact.clone());
+                    self.qr_visible = false;
                     self.task_running = false;
                 }
                 TaskMessage::StampFailed(error) => {
                     self.result_message = error;
                     self.result_is_error = true;
                     self.operation_phase = OperationPhase::Failed;
+                    self.qr_data = None;
+                    self.qr_visible = false;
                     self.task_running = false;
                 }
                 TaskMessage::VerifyComplete(result) => {
                     self.verify_result = Some(result);
+                    self.qr_data = self.verify_result.as_ref().map(|r| r.compact.clone());
+                    self.qr_visible = false;
                     self.verify_step = VerifyStep::Results;
                     self.operation_phase = if self
                         .verify_result
@@ -255,6 +268,8 @@ impl App {
                     self.result_message = error;
                     self.result_is_error = true;
                     self.operation_phase = OperationPhase::Failed;
+                    self.qr_data = None;
+                    self.qr_visible = false;
                     self.task_running = false;
                 }
                 TaskMessage::SyncComplete {
@@ -316,6 +331,8 @@ impl App {
         self.stamp_result = None;
         self.verify_result = None;
         self.task_running = false;
+        self.qr_visible = false;
+        self.qr_data = None;
     }
 
     /// Toggle between supported hash algorithms for stamping
@@ -331,6 +348,15 @@ impl App {
     /// Handle keyboard input in current state
     pub fn handle_input(&mut self, key: KeyCode) -> Result<()> {
         match key {
+            KeyCode::Char('q') | KeyCode::Char('Q') => {
+                if self.can_toggle_qr() {
+                    self.qr_visible = !self.qr_visible;
+                    return Ok(());
+                }
+                if !self.task_running {
+                    self.input_buffer.push('q');
+                }
+            }
             KeyCode::Tab => {
                 if matches!(self.state, AppState::Stamp) && !self.task_running {
                     self.toggle_hash_algorithm();
@@ -353,6 +379,14 @@ impl App {
             _ => {}
         }
         Ok(())
+    }
+
+    fn can_toggle_qr(&self) -> bool {
+        matches!(
+            self.operation_phase,
+            OperationPhase::Complete | OperationPhase::Failed
+        ) && (self.state == AppState::Stamp || self.state == AppState::Verify)
+            && self.qr_data.is_some()
     }
 
     /// Process the current input based on state
@@ -446,6 +480,8 @@ impl App {
         self.task_running = true;
         self.operation_phase = OperationPhase::Syncing;
         self.status_message = "Starting stamp operation...".to_string();
+        self.qr_visible = false;
+        self.qr_data = None;
 
         // Clone sender for background task
         let tx = self.task_tx.clone();
@@ -531,6 +567,9 @@ impl App {
                     return;
                 }
 
+                self.qr_visible = false;
+                self.qr_data = None;
+
                 if input.is_empty() {
                     self.result_message = "Please enter a proof file path (.zots)".to_string();
                     self.result_is_error = true;
@@ -553,6 +592,7 @@ impl App {
                         return;
                     }
                 };
+                let proof_compact = proof.to_compact().unwrap_or_default();
 
                 let proof_hash_bytes = match proof.hash_bytes() {
                     Ok(h) => h,
@@ -584,6 +624,7 @@ impl App {
                     }
                 };
                 self.verify_hash = Some(verify_hash);
+                self.qr_data = Some(proof_compact.clone());
 
                 let file_hash_matches = self.verify_hash.map(|h| h == proof_hash_bytes);
                 if let Some(matches) = file_hash_matches
@@ -592,6 +633,7 @@ impl App {
                     self.verify_result = Some(VerifyResult {
                         hash: proof.hash.clone(),
                         algorithm: proof_algorithm,
+                        compact: proof_compact.clone(),
                         valid: false,
                         network: String::new(),
                         block_height: 0,
@@ -610,6 +652,7 @@ impl App {
                     self.verify_result = Some(VerifyResult {
                         hash: proof.hash.clone(),
                         algorithm: proof_algorithm,
+                        compact: proof_compact.clone(),
                         valid: false,
                         network: String::new(),
                         block_height: 0,
@@ -633,6 +676,7 @@ impl App {
                         self.verify_result = Some(VerifyResult {
                             hash: proof.hash.clone(),
                             algorithm: proof_algorithm,
+                            compact: proof_compact.clone(),
                             valid: true,
                             network: att.network.to_string(),
                             block_height: att.block_height,
@@ -665,6 +709,7 @@ impl App {
                 let verify_data = VerifyTaskData {
                     proof_hash: proof.hash.clone(),
                     algorithm: proof_algorithm,
+                    compact: proof_compact.clone(),
                     proof_hash_bytes,
                     txid_bytes,
                     block_height: att.block_height,
@@ -674,6 +719,7 @@ impl App {
                     explorer_link: att.explorer_link(),
                     file_hash_matches,
                 };
+                self.qr_data = Some(proof_compact);
 
                 self.task_running = true;
                 self.verify_step = VerifyStep::Verifying;
@@ -705,6 +751,7 @@ impl App {
 struct VerifyTaskData {
     proof_hash: String,
     algorithm: HashAlgorithm,
+    compact: String,
     proof_hash_bytes: [u8; 32],
     txid_bytes: [u8; 32],
     block_height: u32,
@@ -955,6 +1002,7 @@ async fn run_verify_task(tx: mpsc::Sender<TaskMessage>, config: ZcashConfig, dat
                 .send(TaskMessage::VerifyComplete(VerifyResult {
                     hash: data.proof_hash,
                     algorithm: data.algorithm,
+                    compact: data.compact.clone(),
                     valid: vr.valid,
                     network: data.network,
                     block_height: data.block_height,
@@ -971,6 +1019,7 @@ async fn run_verify_task(tx: mpsc::Sender<TaskMessage>, config: ZcashConfig, dat
                 .send(TaskMessage::VerifyComplete(VerifyResult {
                     hash: data.proof_hash,
                     algorithm: data.algorithm,
+                    compact: data.compact,
                     valid: false,
                     network: data.network,
                     block_height: data.block_height,
