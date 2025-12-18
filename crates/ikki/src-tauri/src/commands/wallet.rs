@@ -10,7 +10,7 @@ use zots_zcash::{ZcashConfig, ZotsWallet};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WalletInfo {
     pub address: String,
-    pub balance: u64,
+    pub balance: BalanceInfo,
     pub block_height: u64,
 }
 
@@ -26,7 +26,7 @@ pub struct BalanceInfo {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SyncResult {
     pub block_height: u64,
-    pub balance: u64,
+    pub balance: BalanceInfo,
 }
 
 /// Stored wallet configuration
@@ -179,7 +179,9 @@ pub async fn init_wallet(
         .get_address()
         .map_err(|e| format!("Failed to get address: {e}"))?;
 
-    let balance = wallet.get_balance().unwrap_or(0);
+    let breakdown = wallet
+        .get_balance_breakdown()
+        .map_err(|e| format!("Failed to get balance: {e}"))?;
 
     let block_height = wallet
         .get_block_height()
@@ -195,7 +197,11 @@ pub async fn init_wallet(
 
     Ok(WalletInfo {
         address,
-        balance,
+        balance: BalanceInfo {
+            total: breakdown.sapling + breakdown.orchard + breakdown.transparent,
+            shielded: breakdown.sapling + breakdown.orchard,
+            transparent: breakdown.transparent,
+        },
         block_height,
     })
 }
@@ -224,7 +230,9 @@ pub async fn load_wallet(
         .get_address()
         .map_err(|e| format!("Failed to get address: {e}"))?;
 
-    let balance = wallet.get_balance().unwrap_or(0);
+    let breakdown = wallet
+        .get_balance_breakdown()
+        .map_err(|e| format!("Failed to get balance: {e}"))?;
 
     let block_height = wallet
         .get_block_height()
@@ -240,7 +248,11 @@ pub async fn load_wallet(
 
     Ok(WalletInfo {
         address,
-        balance,
+        balance: BalanceInfo {
+            total: breakdown.sapling + breakdown.orchard + breakdown.transparent,
+            shielded: breakdown.sapling + breakdown.orchard,
+            transparent: breakdown.transparent,
+        },
         block_height,
     })
 }
@@ -274,7 +286,9 @@ pub async fn auto_load_wallet(state: State<'_, AppState>) -> Result<Option<Walle
         .get_address()
         .map_err(|e| format!("Failed to get address: {e}"))?;
 
-    let balance = wallet.get_balance().unwrap_or(0);
+    let breakdown = wallet
+        .get_balance_breakdown()
+        .map_err(|e| format!("Failed to get balance: {e}"))?;
 
     let block_height = wallet
         .get_block_height()
@@ -287,7 +301,11 @@ pub async fn auto_load_wallet(state: State<'_, AppState>) -> Result<Option<Walle
 
     Ok(Some(WalletInfo {
         address,
-        balance,
+        balance: BalanceInfo {
+            total: breakdown.sapling + breakdown.orchard + breakdown.transparent,
+            shielded: breakdown.sapling + breakdown.orchard,
+            transparent: breakdown.transparent,
+        },
         block_height,
     }))
 }
@@ -353,7 +371,9 @@ pub async fn sync_wallet(state: State<'_, AppState>) -> Result<SyncResult, Strin
         .await
         .map_err(|e| format!("Sync failed: {e}"))?;
 
-    let balance = wallet.get_balance().unwrap_or(0);
+    let breakdown = wallet
+        .get_balance_breakdown()
+        .map_err(|e| format!("Failed to get balance: {e}"))?;
     let block_height = wallet
         .get_block_height()
         .await
@@ -361,6 +381,10 @@ pub async fn sync_wallet(state: State<'_, AppState>) -> Result<SyncResult, Strin
 
     Ok(SyncResult {
         block_height,
-        balance,
+        balance: BalanceInfo {
+            total: breakdown.sapling + breakdown.orchard + breakdown.transparent,
+            shielded: breakdown.sapling + breakdown.orchard,
+            transparent: breakdown.transparent,
+        },
     })
 }

@@ -18,11 +18,7 @@
     try {
       wallet.setSyncing(true);
       const result = await syncWallet();
-      wallet.updateBalance({
-        total: result.balance,
-        shielded: result.balance,
-        transparent: 0,
-      });
+      wallet.updateBalance(result.balance);
       ui.showToast("Wallet synced", "success");
     } catch (e) {
       ui.showToast(`Sync failed: ${e}`, "error");
@@ -96,7 +92,11 @@
       const walletInfo = await loadWallet(words.join(" "), birthdayHeight);
       wallet.setInfo({
         address: walletInfo.address,
-        balance: walletInfo.balance,
+        balance: {
+          total: walletInfo.balance.total,
+          shielded: walletInfo.balance.shielded,
+          transparent: walletInfo.balance.transparent,
+        },
         blockHeight: walletInfo.block_height,
       });
 

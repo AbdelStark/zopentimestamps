@@ -24,11 +24,7 @@
     try {
       wallet.setSyncing(true);
       const result = await syncWallet();
-      wallet.updateBalance({
-        total: result.balance,
-        shielded: result.balance,
-        transparent: 0,
-      });
+      wallet.updateBalance(result.balance);
       // Refresh transactions after sync
       recentTransactions = await getTransactions();
       ui.showToast("Wallet synced", "success");

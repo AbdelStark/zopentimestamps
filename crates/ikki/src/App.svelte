@@ -28,7 +28,11 @@
         if (walletInfo) {
           wallet.setInfo({
             address: walletInfo.address,
-            balance: walletInfo.balance,
+            balance: {
+              total: walletInfo.balance.total,
+              shielded: walletInfo.balance.shielded,
+              transparent: walletInfo.balance.transparent,
+            },
             blockHeight: walletInfo.block_height,
           });
           ui.setNeedsOnboarding(false);

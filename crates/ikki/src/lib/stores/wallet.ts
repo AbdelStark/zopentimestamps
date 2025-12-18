@@ -2,7 +2,7 @@ import { writable, derived } from "svelte/store";
 
 export interface WalletInfo {
   address: string;
-  balance: number;
+  balance: BalanceInfo;
   blockHeight: number;
 }
 
@@ -43,11 +43,7 @@ function createWalletStore() {
         ...s,
         initialized: true,
         info,
-        balance: {
-          total: info.balance,
-          shielded: info.balance,
-          transparent: 0,
-        },
+        balance: info.balance,
       })),
     setAddress: (address: string) =>
       update((s) => ({

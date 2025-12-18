@@ -1,21 +1,21 @@
 import { invoke } from "@tauri-apps/api/core";
 
 // Types matching Rust structs
-export interface WalletInfo {
-  address: string;
-  balance: number;
-  block_height: number;
-}
-
 export interface BalanceInfo {
   total: number;
   shielded: number;
   transparent: number;
 }
 
+export interface WalletInfo {
+  address: string;
+  balance: BalanceInfo;
+  block_height: number;
+}
+
 export interface SyncResult {
   block_height: number;
-  balance: number;
+  balance: BalanceInfo;
 }
 
 export interface SendResult {
