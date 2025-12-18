@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { ArrowUpRight, ArrowDownLeft } from "lucide-svelte";
+  import { ArrowUpRight, ArrowDownLeft, Layers, RefreshCw } from "lucide-svelte";
   import { formatZec, truncateAddress, formatRelativeTime } from "../utils/format";
 
   export let txid: string;
@@ -17,7 +17,14 @@
     internal: "Internal",
   };
 
-  $: isOutgoing = txType === "sent" || txType === "shielding";
+  const icons = {
+    sent: ArrowUpRight,
+    received: ArrowDownLeft,
+    shielding: Layers,
+    internal: RefreshCw,
+  };
+
+  $: isOutgoing = txType === "sent";
   $: displayAmount = Math.abs(amount);
   $: subtitle = address
     ? truncateAddress(address, 6)
@@ -27,33 +34,34 @@
         : memo
       : formatRelativeTime(timestamp);
 
+  $: IconComponent = icons[txType];
+
   // Silence unused warning
   $: void txid;
 </script>
 
-<button class="transaction-item">
+<button class="transaction-item" class:pending={status === "pending"}>
   <div class="tx-icon" class:outgoing={isOutgoing} class:incoming={!isOutgoing}>
-    {#if isOutgoing}
-      <ArrowUpRight size={16} strokeWidth={2.5} />
-    {:else}
-      <ArrowDownLeft size={16} strokeWidth={2.5} />
-    {/if}
+    <svelte:component this={IconComponent} size={15} strokeWidth={2} />
   </div>
 
   <div class="tx-info">
-    <span class="tx-label">{labels[txType]}</span>
+    <div class="tx-header">
+      <span class="tx-label">{labels[txType]}</span>
+      {#if status === "pending"}
+        <span class="tx-badge pending">Pending</span>
+      {:else if status === "failed"}
+        <span class="tx-badge failed">Failed</span>
+      {/if}
+    </div>
     <span class="tx-subtitle">{subtitle}</span>
   </div>
 
   <div class="tx-amount-section">
-    <span class="tx-amount" class:outgoing={isOutgoing} class:incoming={!isOutgoing}>
+    <span class="tx-amount" class:outgoing={isOutgoing}>
       {isOutgoing ? "-" : "+"}{formatZec(displayAmount)}
     </span>
-    {#if status === "pending"}
-      <span class="tx-status pending">Pending</span>
-    {:else if status === "failed"}
-      <span class="tx-status failed">Failed</span>
-    {/if}
+    <span class="tx-unit">ZEC</span>
   </div>
 </button>
 
@@ -62,59 +70,90 @@
     display: flex;
     align-items: center;
     gap: var(--space-3);
-    padding: var(--space-3) var(--space-4);
-    background: none;
+    padding: var(--space-4);
+    background: transparent;
     border: none;
     cursor: pointer;
     width: 100%;
     text-align: left;
-    border-radius: var(--radius-md);
     transition:
       background var(--duration-fast) var(--ease-out),
       transform var(--duration-fast) var(--ease-out);
     -webkit-tap-highlight-color: transparent;
+    position: relative;
+  }
+
+  .transaction-item::after {
+    content: '';
+    position: absolute;
+    right: var(--space-4);
+    top: 50%;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 4px;
+    border-radius: var(--radius-full);
+    background: transparent;
+    transition: background var(--duration-fast) var(--ease-out);
   }
 
   .transaction-item:hover {
     background: var(--bg-hover);
   }
 
+  .transaction-item:hover::after {
+    background: var(--border-emphasis);
+  }
+
   .transaction-item:active {
     background: var(--bg-active);
-    transform: scale(0.99);
+    transform: scale(0.995);
+  }
+
+  .transaction-item.pending {
+    opacity: 0.7;
   }
 
   .tx-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: var(--radius-full);
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-md);
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    transition: transform var(--duration-fast) var(--ease-out);
+    transition:
+      transform var(--duration-fast) var(--ease-out),
+      background var(--duration-fast) var(--ease-out);
+    border: 1px solid var(--border-subtle);
   }
 
   .transaction-item:hover .tx-icon {
-    transform: scale(1.05);
+    transform: scale(1.02);
   }
 
   .tx-icon.outgoing {
-    background: var(--send-muted);
-    color: var(--send);
+    background: var(--bg-elevated);
+    color: var(--text-secondary);
   }
 
   .tx-icon.incoming {
     background: var(--receive-muted);
-    color: var(--receive);
+    color: var(--text-primary);
+    border-color: rgba(255, 255, 255, 0.08);
   }
 
   .tx-info {
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 3px;
+    gap: 4px;
     min-width: 0;
+  }
+
+  .tx-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
   }
 
   .tx-label {
@@ -122,6 +161,26 @@
     font-weight: var(--font-medium);
     color: var(--text-primary);
     letter-spacing: var(--tracking-normal);
+  }
+
+  .tx-badge {
+    font-size: 9px;
+    font-weight: var(--font-semibold);
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    letter-spacing: var(--tracking-wider);
+    text-transform: uppercase;
+  }
+
+  .tx-badge.pending {
+    background: var(--bg-elevated);
+    color: var(--text-tertiary);
+    border: 1px solid var(--border-subtle);
+  }
+
+  .tx-badge.failed {
+    background: var(--error-muted);
+    color: var(--error);
   }
 
   .tx-subtitle {
@@ -135,9 +194,9 @@
 
   .tx-amount-section {
     display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 3px;
+    align-items: baseline;
+    gap: 4px;
+    flex-shrink: 0;
   }
 
   .tx-amount {
@@ -146,32 +205,17 @@
     font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
     letter-spacing: var(--tracking-tight);
+    color: var(--text-primary);
   }
 
   .tx-amount.outgoing {
     color: var(--text-secondary);
   }
 
-  .tx-amount.incoming {
-    color: var(--receive);
-  }
-
-  .tx-status {
-    font-size: 9px;
-    font-weight: var(--font-semibold);
-    padding: 2px 6px;
-    border-radius: var(--radius-sm);
-    letter-spacing: var(--tracking-wider);
-    text-transform: uppercase;
-  }
-
-  .tx-status.pending {
-    background: var(--warning-muted);
-    color: var(--warning);
-  }
-
-  .tx-status.failed {
-    background: var(--error-muted);
-    color: var(--error);
+  .tx-unit {
+    font-size: var(--text-2xs);
+    font-weight: var(--font-medium);
+    color: var(--text-tertiary);
+    letter-spacing: var(--tracking-wide);
   }
 </style>

@@ -1,5 +1,7 @@
 <script lang="ts">
+  import { onMount } from "svelte";
   import { ArrowLeft, Copy, Check, Share2, Shield, RefreshCw } from "lucide-svelte";
+  import QRCode from "qrcode";
   import { address, wallet } from "../lib/stores/wallet";
   import { ui } from "../lib/stores/ui";
   import { copyToClipboard } from "../lib/utils/format";
@@ -8,6 +10,37 @@
 
   let copied = false;
   let generating = false;
+  let qrCodeSvg = "";
+  let qrLoading = true;
+
+  async function generateQR(addr: string) {
+    if (!addr) return;
+    qrLoading = true;
+    try {
+      qrCodeSvg = await QRCode.toString(addr, {
+        type: "svg",
+        width: 180,
+        margin: 0,
+        color: {
+          dark: "#ffffff",
+          light: "#00000000",
+        },
+        errorCorrectionLevel: "M",
+      });
+    } catch (e) {
+      console.error("Failed to generate QR code:", e);
+      qrCodeSvg = "";
+    } finally {
+      qrLoading = false;
+    }
+  }
+
+  // Generate QR code when address changes
+  $: generateQR($address);
+
+  onMount(() => {
+    generateQR($address);
+  });
 
   async function handleCopy() {
     const success = await copyToClipboard($address);
@@ -66,13 +99,29 @@
   <div class="receive-content">
     <div class="qr-section">
       <div class="qr-container">
-        <div class="qr-placeholder">
-          <svg width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="0.75" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="3" width="7" height="7"/>
-            <rect x="14" y="3" width="7" height="7"/>
-            <rect x="14" y="14" width="7" height="7"/>
-            <rect x="3" y="14" width="7" height="7"/>
-          </svg>
+        {#if qrLoading}
+          <div class="qr-loading">
+            <div class="qr-skeleton"></div>
+          </div>
+        {:else if qrCodeSvg}
+          <div class="qr-code">
+            {@html qrCodeSvg}
+          </div>
+        {:else}
+          <div class="qr-placeholder">
+            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="0.75" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="7" height="7"/>
+              <rect x="14" y="3" width="7" height="7"/>
+              <rect x="14" y="14" width="7" height="7"/>
+              <rect x="3" y="14" width="7" height="7"/>
+            </svg>
+          </div>
+        {/if}
+        <div class="qr-corners">
+          <div class="corner corner-tl"></div>
+          <div class="corner corner-tr"></div>
+          <div class="corner corner-bl"></div>
+          <div class="corner corner-br"></div>
         </div>
       </div>
       <div class="address-type">
@@ -104,7 +153,7 @@
         </Button>
         <Button variant="secondary" size="lg" fullWidth onclick={handleNewAddress} disabled={generating}>
           <RefreshCw size={16} strokeWidth={2} class={generating ? "spinning" : ""} />
-          {generating ? "Generating..." : "New Address"}
+          {generating ? "..." : "New"}
         </Button>
       </div>
     </div>
@@ -191,8 +240,8 @@
   }
 
   .qr-container {
-    width: 200px;
-    height: 200px;
+    width: 220px;
+    height: 220px;
     background: var(--bg-card);
     border-radius: var(--radius-xl);
     border: 1px solid var(--border);
@@ -200,6 +249,7 @@
     align-items: center;
     justify-content: center;
     position: relative;
+    overflow: hidden;
   }
 
   .qr-container::before {
@@ -211,23 +261,88 @@
     pointer-events: none;
   }
 
-  .qr-container::after {
-    content: '';
+  .qr-corners {
     position: absolute;
+    inset: 12px;
+    pointer-events: none;
+  }
+
+  .corner {
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    border-color: var(--border-emphasis);
+    border-style: solid;
+    border-width: 0;
+  }
+
+  .corner-tl {
     top: 0;
-    left: 10%;
-    right: 10%;
-    height: 1px;
-    background: linear-gradient(90deg,
-      transparent,
-      rgba(255, 255, 255, 0.06),
-      transparent
+    left: 0;
+    border-top-width: 2px;
+    border-left-width: 2px;
+    border-top-left-radius: 4px;
+  }
+
+  .corner-tr {
+    top: 0;
+    right: 0;
+    border-top-width: 2px;
+    border-right-width: 2px;
+    border-top-right-radius: 4px;
+  }
+
+  .corner-bl {
+    bottom: 0;
+    left: 0;
+    border-bottom-width: 2px;
+    border-left-width: 2px;
+    border-bottom-left-radius: 4px;
+  }
+
+  .corner-br {
+    bottom: 0;
+    right: 0;
+    border-bottom-width: 2px;
+    border-right-width: 2px;
+    border-bottom-right-radius: 4px;
+  }
+
+  .qr-code {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: scaleIn var(--duration-normal) var(--ease-out);
+  }
+
+  .qr-code :global(svg) {
+    display: block;
+  }
+
+  .qr-loading {
+    position: relative;
+    z-index: 1;
+  }
+
+  .qr-skeleton {
+    width: 160px;
+    height: 160px;
+    background: linear-gradient(
+      90deg,
+      var(--bg-elevated) 0%,
+      var(--bg-hover) 50%,
+      var(--bg-elevated) 100%
     );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+    border-radius: var(--radius-md);
   }
 
   .qr-placeholder {
     color: var(--text-tertiary);
-    opacity: 0.25;
+    opacity: 0.2;
     position: relative;
     z-index: 1;
   }
@@ -298,6 +413,11 @@
   @keyframes spin {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
+  }
+
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
   }
 
   .info-section {

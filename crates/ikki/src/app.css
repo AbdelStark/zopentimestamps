@@ -36,11 +36,11 @@
   --info: #3b82f6;
   --info-muted: rgba(59, 130, 246, 0.15);
 
-  /* Transaction Colors */
-  --send: #f87171;
-  --send-muted: rgba(248, 113, 113, 0.12);
-  --receive: #34d399;
-  --receive-muted: rgba(52, 211, 153, 0.12);
+  /* Transaction Colors - Premium Monochrome */
+  --send: #a1a1aa;
+  --send-muted: rgba(161, 161, 170, 0.1);
+  --receive: #e4e4e7;
+  --receive-muted: rgba(228, 228, 231, 0.08);
 
   /* Borders - Subtle */
   --border: rgba(255, 255, 255, 0.06);

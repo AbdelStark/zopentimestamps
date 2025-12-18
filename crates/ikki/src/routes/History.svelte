@@ -8,6 +8,51 @@
   let loading = true;
   let error: string | null = null;
 
+  interface GroupedTransactions {
+    label: string;
+    transactions: Transaction[];
+  }
+
+  function groupTransactionsByDate(txs: Transaction[]): GroupedTransactions[] {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const thisWeek = new Date(today);
+    thisWeek.setDate(thisWeek.getDate() - 7);
+    const thisMonth = new Date(today);
+    thisMonth.setDate(thisMonth.getDate() - 30);
+
+    const groups: { [key: string]: Transaction[] } = {
+      Today: [],
+      Yesterday: [],
+      "This Week": [],
+      "This Month": [],
+      Earlier: [],
+    };
+
+    for (const tx of txs) {
+      const txDate = new Date(tx.timestamp * 1000);
+      if (txDate >= today) {
+        groups["Today"].push(tx);
+      } else if (txDate >= yesterday) {
+        groups["Yesterday"].push(tx);
+      } else if (txDate >= thisWeek) {
+        groups["This Week"].push(tx);
+      } else if (txDate >= thisMonth) {
+        groups["This Month"].push(tx);
+      } else {
+        groups["Earlier"].push(tx);
+      }
+    }
+
+    return Object.entries(groups)
+      .filter(([_, txs]) => txs.length > 0)
+      .map(([label, transactions]) => ({ label, transactions }));
+  }
+
+  $: groupedTransactions = groupTransactionsByDate(transactions);
+
   onMount(async () => {
     try {
       transactions = await getTransactions();
@@ -22,6 +67,9 @@
 <div class="history">
   <header class="history-header">
     <h1>Activity</h1>
+    {#if transactions.length > 0}
+      <span class="tx-count">{transactions.length}</span>
+    {/if}
   </header>
 
   <div class="history-content">
@@ -52,17 +100,27 @@
         <p>Your activity will appear here</p>
       </div>
     {:else}
-      <div class="transaction-list">
-        {#each transactions as tx}
-          <TransactionItem
-            txid={tx.txid}
-            txType={tx.tx_type}
-            amount={tx.amount}
-            timestamp={tx.timestamp}
-            address={tx.address}
-            memo={tx.memo}
-            status={tx.status}
-          />
+      <div class="transaction-groups">
+        {#each groupedTransactions as group}
+          <div class="transaction-group">
+            <div class="group-header">
+              <span class="group-label">{group.label}</span>
+              <span class="group-count">{group.transactions.length}</span>
+            </div>
+            <div class="transaction-list">
+              {#each group.transactions as tx}
+                <TransactionItem
+                  txid={tx.txid}
+                  txType={tx.tx_type}
+                  amount={tx.amount}
+                  timestamp={tx.timestamp}
+                  address={tx.address}
+                  memo={tx.memo}
+                  status={tx.status}
+                />
+              {/each}
+            </div>
+          </div>
         {/each}
       </div>
     {/if}
@@ -79,15 +137,29 @@
   }
 
   .history-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     padding: var(--space-5);
     padding-bottom: var(--space-3);
   }
 
   .history-header h1 {
-    font-size: var(--text-xl);
+    font-size: var(--text-lg);
     font-weight: var(--font-semibold);
     color: var(--text-primary);
     letter-spacing: var(--tracking-tight);
+  }
+
+  .tx-count {
+    font-size: var(--text-2xs);
+    font-weight: var(--font-medium);
+    color: var(--text-tertiary);
+    background: var(--bg-elevated);
+    padding: 4px 10px;
+    border-radius: var(--radius-full);
+    border: 1px solid var(--border-subtle);
+    letter-spacing: var(--tracking-wide);
   }
 
   .history-content {
@@ -164,6 +236,40 @@
     font-size: var(--text-xs);
   }
 
+  .transaction-groups {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+  }
+
+  .transaction-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .group-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 var(--space-1);
+  }
+
+  .group-label {
+    font-size: var(--text-2xs);
+    font-weight: var(--font-semibold);
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-widest);
+  }
+
+  .group-count {
+    font-size: var(--text-2xs);
+    color: var(--text-tertiary);
+    font-weight: var(--font-medium);
+    letter-spacing: var(--tracking-wide);
+  }
+
   .transaction-list {
     background: var(--bg-card);
     border-radius: var(--radius-lg);
@@ -173,6 +279,15 @@
   }
 
   .transaction-list::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: var(--gradient-card);
+    pointer-events: none;
+  }
+
+  .transaction-list::after {
     content: '';
     position: absolute;
     top: 0;
