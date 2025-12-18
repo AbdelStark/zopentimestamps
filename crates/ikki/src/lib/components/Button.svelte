@@ -10,122 +10,135 @@
 </script>
 
 <button
-  class="button button-{variant} button-{size}"
+  class="btn btn-{variant} btn-{size}"
   class:full-width={fullWidth}
   disabled={disabled || loading}
   {onclick}
 >
   {#if loading}
-    <Loader2 size={size === "sm" ? 14 : 16} class="spin" />
+    <Loader2 size={size === "sm" ? 14 : 16} class="spinning" />
   {/if}
-  <slot />
+  <span class="btn-content"><slot /></span>
 </button>
 
 <style>
-  .button {
+  .btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: var(--space-2);
-    font-family: var(--font-family);
-    font-weight: var(--weight-medium);
+    font-family: var(--font-sans);
+    font-weight: var(--font-medium);
     border: none;
     cursor: pointer;
-    transition: all var(--transition-fast);
     white-space: nowrap;
-    letter-spacing: 0.01em;
+    letter-spacing: var(--tracking-wide);
     position: relative;
-    -webkit-tap-highlight-color: transparent;
+    overflow: hidden;
+    transition:
+      background var(--duration-fast) var(--ease-out),
+      transform var(--duration-fast) var(--ease-out),
+      box-shadow var(--duration-fast) var(--ease-out);
   }
 
-  .button:disabled {
-    opacity: 0.5;
+  .btn:disabled {
+    opacity: 0.4;
     cursor: not-allowed;
+    pointer-events: none;
   }
 
-  .button :global(.spin) {
-    animation: spin 1s linear infinite;
+  .btn :global(.spinning) {
+    animation: spin 0.9s linear infinite;
   }
 
-  /* Sizes - Refined */
-  .button-sm {
-    padding: var(--space-2) var(--space-3);
-    font-size: var(--text-small);
+  .btn-content {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  /* Sizes */
+  .btn-sm {
+    padding: 0 var(--space-3);
+    font-size: var(--text-sm);
     border-radius: var(--radius-sm);
-    height: 34px;
+    height: 32px;
   }
 
-  .button-md {
-    padding: var(--space-2\.5) var(--space-4);
-    font-size: var(--text-body);
+  .btn-md {
+    padding: 0 var(--space-5);
+    font-size: var(--text-base);
     border-radius: var(--radius-md);
     height: 44px;
   }
 
-  .button-lg {
-    padding: var(--space-3) var(--space-6);
-    font-size: var(--text-body);
-    font-weight: var(--weight-semibold);
+  .btn-lg {
+    padding: 0 var(--space-6);
+    font-size: var(--text-base);
+    font-weight: var(--font-semibold);
     border-radius: var(--radius-md);
     height: 52px;
   }
 
-  /* Primary - White/Light */
-  .button-primary {
+  /* Primary */
+  .btn-primary {
     background: var(--text-primary);
     color: var(--text-inverse);
   }
 
-  .button-primary:not(:disabled):hover {
-    background: var(--accent-secondary);
+  .btn-primary:not(:disabled):hover {
+    background: var(--accent-soft);
   }
 
-  .button-primary:not(:disabled):active {
+  .btn-primary:not(:disabled):active {
     transform: scale(0.98);
+    background: #d1d5db;
   }
 
-  /* Secondary - Border */
-  .button-secondary {
+  /* Secondary */
+  .btn-secondary {
     background: transparent;
     color: var(--text-primary);
-    border: 1px solid var(--border-light);
+    box-shadow: inset 0 0 0 1px var(--border);
   }
 
-  .button-secondary:not(:disabled):hover {
-    background: var(--bg-card);
-    border-color: var(--border-focus);
+  .btn-secondary:not(:disabled):hover {
+    background: var(--bg-hover);
+    box-shadow: inset 0 0 0 1px var(--border-emphasis);
   }
 
-  .button-secondary:not(:disabled):active {
+  .btn-secondary:not(:disabled):active {
     transform: scale(0.98);
+    background: var(--bg-active);
   }
 
   /* Ghost */
-  .button-ghost {
+  .btn-ghost {
     background: transparent;
     color: var(--text-secondary);
   }
 
-  .button-ghost:not(:disabled):hover {
-    background: var(--bg-card);
+  .btn-ghost:not(:disabled):hover {
+    background: var(--bg-hover);
     color: var(--text-primary);
   }
 
-  .button-ghost:not(:disabled):active {
+  .btn-ghost:not(:disabled):active {
     transform: scale(0.98);
+    background: var(--bg-active);
   }
 
   /* Danger */
-  .button-danger {
+  .btn-danger {
     background: var(--error);
     color: white;
   }
 
-  .button-danger:not(:disabled):hover {
+  .btn-danger:not(:disabled):hover {
     background: #dc2626;
   }
 
-  .button-danger:not(:disabled):active {
+  .btn-danger:not(:disabled):active {
     transform: scale(0.98);
   }
 

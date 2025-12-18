@@ -22,7 +22,7 @@
   {onclick}
 >
   <div class="action-icon">
-    <Icon size={22} strokeWidth={2.5} />
+    <Icon size={20} strokeWidth={2} />
   </div>
   <span class="action-label">{label}</span>
 </button>
@@ -37,64 +37,62 @@
     background: none;
     border: none;
     cursor: pointer;
-    transition: all var(--transition-fast);
+    transition: transform var(--duration-fast) var(--ease-out);
   }
 
   .action-button:disabled {
     opacity: 0.4;
     cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  .action-button:not(:disabled):active {
+    transform: scale(0.95);
   }
 
   .action-icon {
-    width: 56px;
-    height: 56px;
-    border-radius: 50%;
+    width: 52px;
+    height: 52px;
+    border-radius: var(--radius-full);
     display: flex;
     align-items: center;
     justify-content: center;
     background: var(--bg-card);
     border: 1px solid var(--border);
     color: var(--text-primary);
-    transition: all var(--transition-normal);
     position: relative;
-  }
-
-  .action-icon::before {
-    content: '';
-    position: absolute;
-    inset: -1px;
-    border-radius: 50%;
-    background: transparent;
-    transition: all var(--transition-normal);
-    z-index: -1;
+    transition:
+      background var(--duration-normal) var(--ease-out),
+      border-color var(--duration-normal) var(--ease-out),
+      transform var(--duration-normal) var(--ease-spring),
+      box-shadow var(--duration-normal) var(--ease-out);
   }
 
   .action-button:not(:disabled):hover .action-icon {
     background: var(--bg-elevated);
-    border-color: var(--border-light);
-    transform: translateY(-2px);
-  }
-
-  .action-button:not(:disabled):hover .action-icon::before {
-    box-shadow: 0 8px 24px rgba(255, 255, 255, 0.04);
-  }
-
-  .action-button:not(:disabled):active .action-icon {
-    transform: translateY(0);
+    border-color: var(--border-emphasis);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
   }
 
   .action-button.send:not(:disabled):hover .action-icon {
-    border-color: rgba(248, 113, 113, 0.3);
+    border-color: rgba(248, 113, 113, 0.4);
+    box-shadow: 0 8px 24px rgba(248, 113, 113, 0.1);
   }
 
   .action-button.receive:not(:disabled):hover .action-icon {
-    border-color: rgba(74, 222, 128, 0.3);
+    border-color: rgba(52, 211, 153, 0.4);
+    box-shadow: 0 8px 24px rgba(52, 211, 153, 0.1);
   }
 
   .action-label {
-    font-size: var(--text-small);
-    font-weight: var(--weight-medium);
+    font-size: var(--text-xs);
+    font-weight: var(--font-medium);
     color: var(--text-secondary);
-    letter-spacing: 0.01em;
+    letter-spacing: var(--tracking-wide);
+  }
+
+  .action-button:not(:disabled):hover .action-label {
+    color: var(--text-primary);
   }
 </style>

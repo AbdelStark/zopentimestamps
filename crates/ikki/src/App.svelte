@@ -51,7 +51,7 @@
   {#if loading}
     <div class="loading-screen">
       <div class="loading-logo">
-        <span class="logo-text">Ikki</span>
+        <span class="logo-text">ikki</span>
       </div>
       <div class="loading-spinner"></div>
     </div>
@@ -98,7 +98,8 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: var(--space-xl);
+    gap: var(--space-8);
+    animation: fadeIn var(--duration-normal) var(--ease-out);
   }
 
   .loading-logo {
@@ -109,20 +110,18 @@
 
   .logo-text {
     font-size: 3rem;
-    font-weight: var(--weight-bold);
-    background: var(--gradient-accent);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    font-weight: var(--font-bold);
+    color: var(--text-primary);
+    letter-spacing: var(--tracking-tighter);
   }
 
   .loading-spinner {
-    width: 32px;
-    height: 32px;
-    border: 3px solid var(--bg-elevated);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
+    width: 28px;
+    height: 28px;
+    border: 2px solid var(--border);
+    border-top-color: var(--text-primary);
+    border-radius: var(--radius-full);
+    animation: spin 0.9s linear infinite;
   }
 
   .app-content {
@@ -133,14 +132,16 @@
 
   .toast-container {
     position: fixed;
-    bottom: calc(var(--nav-height) + var(--space-md));
-    left: var(--space-md);
-    right: var(--space-md);
+    bottom: calc(var(--nav-height) + var(--space-4));
+    left: var(--space-4);
+    right: var(--space-4);
     display: flex;
     flex-direction: column;
-    gap: var(--space-sm);
+    gap: var(--space-2);
     z-index: 1000;
     pointer-events: none;
+    max-width: var(--max-width);
+    margin: 0 auto;
   }
 
   .toast-container > :global(*) {

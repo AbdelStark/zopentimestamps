@@ -74,7 +74,7 @@
     min-height: 100%;
     display: flex;
     flex-direction: column;
-    animation: fadeIn var(--transition-normal) ease-out;
+    animation: fadeIn var(--duration-normal) var(--ease-out);
     background: var(--bg-primary);
   }
 
@@ -84,8 +84,8 @@
   }
 
   .history-header h1 {
-    font-size: var(--text-h2);
-    font-weight: var(--weight-semibold);
+    font-size: var(--text-xl);
+    font-weight: var(--font-semibold);
     color: var(--text-primary);
     letter-spacing: var(--tracking-tight);
   }
@@ -111,8 +111,8 @@
   }
 
   .loading-state p {
-    font-size: var(--text-small);
-    letter-spacing: 0.01em;
+    font-size: var(--text-xs);
+    letter-spacing: var(--tracking-wide);
   }
 
   .error-state {
@@ -132,7 +132,7 @@
 
   .error-message {
     color: var(--text-secondary);
-    font-size: var(--text-small);
+    font-size: var(--text-xs);
     max-width: 280px;
     line-height: var(--leading-relaxed);
   }
@@ -149,19 +149,19 @@
 
   .empty-icon {
     color: var(--text-tertiary);
-    opacity: 0.4;
+    opacity: 0.3;
     margin-bottom: var(--space-2);
   }
 
   .empty-state h3 {
-    font-size: var(--text-body);
-    font-weight: var(--weight-medium);
+    font-size: var(--text-sm);
+    font-weight: var(--font-medium);
     color: var(--text-primary);
   }
 
   .empty-state p {
     color: var(--text-tertiary);
-    font-size: var(--text-small);
+    font-size: var(--text-xs);
   }
 
   .transaction-list {
@@ -169,6 +169,21 @@
     border-radius: var(--radius-lg);
     border: 1px solid var(--border);
     overflow: hidden;
+    position: relative;
+  }
+
+  .transaction-list::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 10%;
+    right: 10%;
+    height: 1px;
+    background: linear-gradient(90deg,
+      transparent,
+      rgba(255, 255, 255, 0.04),
+      transparent
+    );
   }
 
   .transaction-list > :global(*:not(:last-child)) {

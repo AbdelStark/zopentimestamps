@@ -112,7 +112,7 @@
     min-height: 100%;
     padding: var(--space-5);
     padding-bottom: calc(var(--nav-height) + var(--space-4));
-    animation: fadeIn var(--transition-normal) ease-out;
+    animation: fadeIn var(--duration-normal) var(--ease-out);
   }
 
   .home-content {
@@ -126,7 +126,7 @@
   .actions {
     display: flex;
     justify-content: center;
-    gap: var(--space-8);
+    gap: var(--space-10);
   }
 
   .recent-section {
@@ -143,8 +143,8 @@
   }
 
   .section-header h3 {
-    font-size: var(--text-caption);
-    font-weight: var(--weight-semibold);
+    font-size: var(--text-2xs);
+    font-weight: var(--font-semibold);
     color: var(--text-tertiary);
     text-transform: uppercase;
     letter-spacing: var(--tracking-widest);
@@ -154,18 +154,20 @@
     background: none;
     border: none;
     color: var(--text-tertiary);
-    font-size: var(--text-caption);
-    font-weight: var(--weight-medium);
+    font-size: var(--text-xs);
+    font-weight: var(--font-medium);
     cursor: pointer;
     padding: var(--space-1) var(--space-2);
     border-radius: var(--radius-sm);
-    transition: all var(--transition-fast);
-    letter-spacing: 0.02em;
+    transition:
+      color var(--duration-fast) var(--ease-out),
+      background var(--duration-fast) var(--ease-out);
+    letter-spacing: var(--tracking-wide);
   }
 
   .see-all:hover {
     color: var(--text-secondary);
-    background: var(--bg-card);
+    background: var(--bg-hover);
   }
 
   .transaction-list {
@@ -173,6 +175,21 @@
     border-radius: var(--radius-lg);
     border: 1px solid var(--border);
     overflow: hidden;
+    position: relative;
+  }
+
+  .transaction-list::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 10%;
+    right: 10%;
+    height: 1px;
+    background: linear-gradient(90deg,
+      transparent,
+      rgba(255, 255, 255, 0.04),
+      transparent
+    );
   }
 
   .transaction-list > :global(*:not(:last-child)) {
@@ -200,19 +217,19 @@
   .skeleton {
     background: linear-gradient(
       90deg,
-      var(--bg-elevated) 25%,
+      var(--bg-elevated) 0%,
       var(--bg-hover) 50%,
-      var(--bg-elevated) 75%
+      var(--bg-elevated) 100%
     );
     background-size: 200% 100%;
-    animation: shimmer 1.5s infinite;
+    animation: shimmer 1.8s ease-in-out infinite;
     border-radius: var(--radius-sm);
   }
 
   .skeleton-icon {
     width: 40px;
     height: 40px;
-    border-radius: 50%;
+    border-radius: var(--radius-full);
     flex-shrink: 0;
   }
 
@@ -220,22 +237,22 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 8px;
   }
 
   .skeleton-title {
-    height: 14px;
-    width: 60px;
+    height: 12px;
+    width: 64px;
   }
 
   .skeleton-subtitle {
-    height: 11px;
-    width: 80px;
+    height: 10px;
+    width: 88px;
   }
 
   .skeleton-amount {
-    width: 60px;
-    height: 14px;
+    width: 56px;
+    height: 12px;
   }
 
   .empty-state {
@@ -252,18 +269,18 @@
   .empty-icon {
     color: var(--text-tertiary);
     margin-bottom: var(--space-4);
-    opacity: 0.4;
+    opacity: 0.3;
   }
 
   .empty-title {
-    font-size: var(--text-body);
-    font-weight: var(--weight-medium);
+    font-size: var(--text-sm);
+    font-weight: var(--font-medium);
     color: var(--text-primary);
     margin-bottom: var(--space-1);
   }
 
   .empty-subtitle {
-    font-size: var(--text-small);
+    font-size: var(--text-xs);
     color: var(--text-tertiary);
   }
 </style>

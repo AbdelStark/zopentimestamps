@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Copy, RefreshCw, Shield } from "lucide-svelte";
+  import { Copy, Check, RefreshCw, Shield } from "lucide-svelte";
   import { ui } from "../stores/ui";
   import { formatZec, truncateAddress, copyToClipboard } from "../utils/format";
 
@@ -17,186 +17,206 @@
       setTimeout(() => (copied = false), 2000);
     }
   }
+
+  $: formattedBalance = formatZec(balance);
+  $: [intPart, decPart] = formattedBalance.includes('.')
+    ? formattedBalance.split('.')
+    : [formattedBalance, '00'];
 </script>
 
-<div class="account-card">
-  <div class="card-glow"></div>
-  <div class="card-inner">
+<div class="card">
+  <div class="card-bg"></div>
+  <div class="card-content">
     <div class="card-header">
-      <div class="label-row">
-        <Shield size={12} strokeWidth={2.5} />
-        <span class="card-label">Shielded Balance</span>
+      <div class="badge">
+        <Shield size={10} strokeWidth={2.5} />
+        <span>Shielded</span>
       </div>
       {#if syncing}
-        <div class="sync-badge">
-          <RefreshCw size={11} class="spin" />
-          <span>Syncing</span>
+        <div class="sync-indicator">
+          <RefreshCw size={12} class="spinning" />
         </div>
       {/if}
     </div>
 
-    <div class="balance-section">
-      <span class="balance-value">{formatZec(balance)}</span>
-      <span class="balance-currency">ZEC</span>
+    <div class="balance">
+      <span class="balance-int">{intPart}</span>
+      <span class="balance-dec">.{decPart}</span>
+      <span class="balance-unit">ZEC</span>
     </div>
 
-    <button class="address-row" onclick={handleCopy} class:copied>
-      <span class="address-text">{truncateAddress(address, 12)}</span>
-      <div class="copy-icon">
-        <Copy size={13} strokeWidth={2} />
+    <button class="address-btn" onclick={handleCopy} class:copied>
+      <span class="address-text">{truncateAddress(address, 10)}</span>
+      <div class="address-icon">
+        {#if copied}
+          <Check size={12} strokeWidth={2.5} />
+        {:else}
+          <Copy size={12} strokeWidth={2} />
+        {/if}
       </div>
     </button>
   </div>
 </div>
 
 <style>
-  .account-card {
+  .card {
     position: relative;
     border-radius: var(--radius-xl);
     overflow: hidden;
   }
 
-  .card-glow {
+  .card-bg {
     position: absolute;
     inset: 0;
-    background: var(--gradient-card);
+    background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius-xl);
   }
 
-  .card-glow::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background: linear-gradient(90deg,
-      transparent 0%,
-      rgba(255,255,255,0.08) 20%,
-      rgba(255,255,255,0.08) 80%,
-      transparent 100%
-    );
-  }
-
-  .card-glow::after {
+  .card-bg::before {
     content: '';
     position: absolute;
     inset: 0;
-    background: var(--gradient-glow);
-    pointer-events: none;
+    background: var(--gradient-card);
+    border-radius: inherit;
   }
 
-  .card-inner {
+  .card-bg::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 10%;
+    right: 10%;
+    height: 1px;
+    background: linear-gradient(90deg,
+      transparent,
+      rgba(255, 255, 255, 0.08),
+      transparent
+    );
+  }
+
+  .card-content {
     position: relative;
     z-index: 1;
-    padding: var(--space-5) var(--space-5) var(--space-4);
+    padding: var(--space-5);
   }
 
   .card-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: var(--space-3);
-  }
-
-  .label-row {
-    display: flex;
-    align-items: center;
-    gap: var(--space-1\.5);
-    color: var(--text-tertiary);
-  }
-
-  .card-label {
-    font-size: var(--text-caption);
-    font-weight: var(--weight-medium);
-    text-transform: uppercase;
-    letter-spacing: var(--tracking-widest);
-  }
-
-  .sync-badge {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 10px;
-    font-weight: var(--weight-medium);
-    color: var(--text-tertiary);
-    padding: 3px 8px;
-    background: var(--bg-primary);
-    border-radius: var(--radius-full);
-    letter-spacing: 0.02em;
-  }
-
-  .sync-badge :global(.spin) {
-    animation: spin 1s linear infinite;
-  }
-
-  .balance-section {
-    display: flex;
-    align-items: baseline;
-    gap: var(--space-2);
     margin-bottom: var(--space-4);
   }
 
-  .balance-value {
-    font-size: var(--text-display);
-    font-weight: var(--weight-bold);
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    background: var(--accent-muted);
+    border-radius: var(--radius-full);
+    color: var(--text-tertiary);
+  }
+
+  .badge span {
+    font-size: 10px;
+    font-weight: var(--font-medium);
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+  }
+
+  .sync-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-full);
+    background: var(--bg-elevated);
+    color: var(--text-tertiary);
+  }
+
+  .sync-indicator :global(.spinning) {
+    animation: spin 1.2s linear infinite;
+  }
+
+  .balance {
+    display: flex;
+    align-items: baseline;
+    gap: 2px;
+    margin-bottom: var(--space-5);
+  }
+
+  .balance-int {
+    font-size: var(--text-2xl);
+    font-weight: var(--font-bold);
     color: var(--text-primary);
-    letter-spacing: var(--tracking-tight);
+    letter-spacing: var(--tracking-tighter);
     line-height: var(--leading-none);
     font-variant-numeric: tabular-nums;
   }
 
-  .balance-currency {
-    font-size: var(--text-small);
-    font-weight: var(--weight-semibold);
+  .balance-dec {
+    font-size: var(--text-xl);
+    font-weight: var(--font-semibold);
     color: var(--text-tertiary);
-    letter-spacing: 0.05em;
+    letter-spacing: var(--tracking-tight);
+    font-variant-numeric: tabular-nums;
   }
 
-  .address-row {
+  .balance-unit {
+    font-size: var(--text-sm);
+    font-weight: var(--font-medium);
+    color: var(--text-tertiary);
+    margin-left: var(--space-2);
+    letter-spacing: var(--tracking-wider);
+  }
+
+  .address-btn {
     display: flex;
     align-items: center;
     justify-content: space-between;
     width: 100%;
-    padding: var(--space-2\.5) var(--space-3);
-    background: rgba(0, 0, 0, 0.3);
+    padding: var(--space-3) var(--space-4);
+    background: rgba(0, 0, 0, 0.25);
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
-    cursor: pointer;
-    transition: all var(--transition-fast);
+    transition: all var(--duration-fast) var(--ease-out);
   }
 
-  .address-row:hover {
-    background: rgba(0, 0, 0, 0.4);
-    border-color: var(--border-light);
+  .address-btn:hover {
+    background: rgba(0, 0, 0, 0.35);
+    border-color: var(--border-emphasis);
   }
 
-  .address-row:active {
+  .address-btn:active {
     transform: scale(0.99);
   }
 
-  .address-row.copied {
+  .address-btn.copied {
     border-color: var(--success);
-  }
-
-  .address-row.copied .copy-icon {
-    color: var(--success);
   }
 
   .address-text {
     font-family: var(--font-mono);
-    font-size: var(--text-small);
+    font-size: var(--text-xs);
     color: var(--text-secondary);
-    letter-spacing: 0.02em;
+    letter-spacing: var(--tracking-wide);
   }
 
-  .copy-icon {
+  .address-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     color: var(--text-tertiary);
-    transition: color var(--transition-fast);
+    transition: color var(--duration-fast) var(--ease-out);
   }
 
-  .address-row:hover .copy-icon {
+  .address-btn:hover .address-icon {
     color: var(--text-secondary);
+  }
+
+  .address-btn.copied .address-icon {
+    color: var(--success);
   }
 </style>

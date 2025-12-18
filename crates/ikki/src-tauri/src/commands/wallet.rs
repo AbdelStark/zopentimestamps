@@ -138,8 +138,7 @@ pub async fn reset_wallet(state: State<'_, AppState>) -> Result<(), String> {
     // Remove wallet database
     let wallet_db = data_dir.join("wallet.db");
     if wallet_db.exists() {
-        std::fs::remove_file(&wallet_db)
-            .map_err(|e| format!("Failed to delete wallet.db: {e}"))?;
+        std::fs::remove_file(&wallet_db).map_err(|e| format!("Failed to delete wallet.db: {e}"))?;
     }
 
     // Remove any other wallet-related files

@@ -9,20 +9,21 @@
   ];
 </script>
 
-<nav class="bottom-nav">
-  <div class="nav-inner">
+<nav class="nav">
+  <div class="nav-container">
     {#each navItems as item}
       <button
         class="nav-item"
         class:active={$currentView === item.id}
         onclick={() => ui.navigate(item.id)}
+        aria-label={item.label}
       >
-        <div class="nav-icon-wrapper">
+        <div class="nav-icon-container">
           {#if $currentView === item.id}
-            <div class="active-indicator"></div>
+            <div class="active-bg"></div>
           {/if}
           <div class="nav-icon">
-            <item.icon size={20} strokeWidth={$currentView === item.id ? 2.25 : 1.75} />
+            <item.icon size={20} strokeWidth={$currentView === item.id ? 2 : 1.5} />
           </div>
         </div>
         <span class="nav-label">{item.label}</span>
@@ -32,25 +33,39 @@
 </nav>
 
 <style>
-  .bottom-nav {
+  .nav {
     position: fixed;
     bottom: 0;
     left: 0;
     right: 0;
-    background: var(--bg-secondary);
-    border-top: 1px solid var(--border);
-    padding-bottom: var(--safe-area-bottom);
     z-index: 100;
+    background: var(--bg-secondary);
+    border-top: 1px solid var(--border-subtle);
+    padding-bottom: var(--safe-bottom);
   }
 
-  .nav-inner {
-    height: var(--nav-height);
+  .nav::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg,
+      transparent,
+      rgba(255, 255, 255, 0.03),
+      transparent
+    );
+  }
+
+  .nav-container {
     display: flex;
     align-items: center;
     justify-content: space-around;
-    padding: 0 var(--space-4);
+    height: var(--nav-height);
     max-width: var(--max-width);
     margin: 0 auto;
+    padding: 0 var(--space-2);
   }
 
   .nav-item {
@@ -59,15 +74,10 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 4px;
-    padding: var(--space-2) var(--space-2);
-    background: none;
-    border: none;
-    cursor: pointer;
+    gap: 3px;
+    padding: var(--space-2);
     color: var(--text-tertiary);
-    transition: color var(--transition-fast);
-    position: relative;
-    -webkit-tap-highlight-color: transparent;
+    transition: color var(--duration-fast) var(--ease-out);
   }
 
   .nav-item:hover {
@@ -78,48 +88,43 @@
     color: var(--text-primary);
   }
 
-  .nav-icon-wrapper {
+  .nav-icon-container {
     position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
+    width: 40px;
+    height: 32px;
   }
 
-  .active-indicator {
+  .active-bg {
     position: absolute;
-    width: 40px;
-    height: 40px;
+    inset: 0;
+    background: var(--accent-muted);
     border-radius: var(--radius-md);
-    background: var(--accent-dim);
-    animation: scaleIn var(--transition-fast) ease-out;
+    animation: scaleIn var(--duration-fast) var(--ease-out);
   }
 
   .nav-icon {
     position: relative;
+    z-index: 1;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 28px;
-    transition: transform var(--transition-spring);
-  }
-
-  .nav-item.active .nav-icon {
-    transform: scale(1.05);
+    transition: transform var(--duration-normal) var(--ease-spring);
   }
 
   .nav-item:active .nav-icon {
-    transform: scale(0.95);
+    transform: scale(0.9);
   }
 
   .nav-label {
-    font-size: 10px;
-    font-weight: var(--weight-medium);
-    letter-spacing: 0.03em;
-    transition: opacity var(--transition-fast);
+    font-size: var(--text-2xs);
+    font-weight: var(--font-medium);
+    letter-spacing: var(--tracking-wide);
   }
 
   .nav-item.active .nav-label {
-    font-weight: var(--weight-semibold);
+    font-weight: var(--font-semibold);
   }
 </style>

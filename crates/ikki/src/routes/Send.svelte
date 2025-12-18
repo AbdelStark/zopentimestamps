@@ -83,7 +83,7 @@
 
   <div class="send-content">
     {#if $sendPhase === "input"}
-      <div class="input-phase animate-fade-in">
+      <div class="input-phase">
         <div class="balance-display">
           <span class="balance-label">Available</span>
           <span class="balance-value">{formatZec($balance)} ZEC</span>
@@ -131,7 +131,7 @@
       </div>
 
     {:else if $sendPhase === "preview"}
-      <div class="preview-phase animate-fade-in">
+      <div class="preview-phase">
         <div class="preview-amount">
           <span class="amount-value">{formatZec(amountZatoshis)}</span>
           <span class="amount-currency">ZEC</span>
@@ -176,7 +176,7 @@
       </div>
 
     {:else if $sendPhase === "sending"}
-      <div class="status-phase animate-fade-in">
+      <div class="status-phase">
         <div class="status-icon spinning">
           <Loader2 size={32} class="spin" />
         </div>
@@ -185,7 +185,7 @@
       </div>
 
     {:else if $sendPhase === "complete"}
-      <div class="status-phase animate-fade-in">
+      <div class="status-phase">
         <div class="status-icon success">
           <Check size={28} strokeWidth={2.5} />
         </div>
@@ -201,7 +201,7 @@
       </div>
 
     {:else if $sendPhase === "error"}
-      <div class="status-phase animate-fade-in">
+      <div class="status-phase">
         <div class="status-icon error">
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <line x1="18" y1="6" x2="6" y2="18"/>
@@ -233,7 +233,7 @@
     align-items: center;
     justify-content: space-between;
     padding: var(--space-3) var(--space-5);
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid var(--border-subtle);
   }
 
   .back-button {
@@ -247,13 +247,16 @@
     color: var(--text-secondary);
     cursor: pointer;
     border-radius: var(--radius-md);
-    transition: all var(--transition-fast);
+    transition:
+      color var(--duration-fast) var(--ease-out),
+      background var(--duration-fast) var(--ease-out),
+      transform var(--duration-fast) var(--ease-out);
     -webkit-tap-highlight-color: transparent;
   }
 
   .back-button:hover {
     color: var(--text-primary);
-    background: var(--bg-card);
+    background: var(--bg-hover);
   }
 
   .back-button:active {
@@ -261,10 +264,10 @@
   }
 
   .send-header h1 {
-    font-size: var(--text-body);
-    font-weight: var(--weight-semibold);
+    font-size: var(--text-sm);
+    font-weight: var(--font-semibold);
     color: var(--text-primary);
-    letter-spacing: 0.01em;
+    letter-spacing: var(--tracking-wide);
   }
 
   .header-spacer {
@@ -277,6 +280,7 @@
     max-width: var(--max-width);
     margin: 0 auto;
     width: 100%;
+    animation: fadeIn var(--duration-normal) var(--ease-out);
   }
 
   /* Input Phase */
@@ -298,14 +302,14 @@
   }
 
   .balance-label {
-    font-size: var(--text-small);
+    font-size: var(--text-xs);
     color: var(--text-tertiary);
-    letter-spacing: 0.01em;
+    letter-spacing: var(--tracking-wide);
   }
 
   .balance-value {
-    font-size: var(--text-body);
-    font-weight: var(--weight-semibold);
+    font-size: var(--text-sm);
+    font-weight: var(--font-semibold);
     color: var(--text-primary);
     font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
@@ -331,10 +335,14 @@
     color: var(--text-tertiary);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
-    font-size: 10px;
-    font-weight: var(--weight-semibold);
+    font-size: 9px;
+    font-weight: var(--font-semibold);
     cursor: pointer;
-    transition: all var(--transition-fast);
+    transition:
+      background var(--duration-fast) var(--ease-out),
+      color var(--duration-fast) var(--ease-out),
+      border-color var(--duration-fast) var(--ease-out),
+      transform var(--duration-fast) var(--ease-out);
     letter-spacing: var(--tracking-widest);
     -webkit-tap-highlight-color: transparent;
   }
@@ -375,8 +383,8 @@
   }
 
   .amount-value {
-    font-size: var(--text-display);
-    font-weight: var(--weight-bold);
+    font-size: var(--text-2xl);
+    font-weight: var(--font-bold);
     color: var(--text-primary);
     font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
@@ -384,11 +392,11 @@
   }
 
   .amount-currency {
-    font-size: var(--text-body);
-    font-weight: var(--weight-medium);
+    font-size: var(--text-sm);
+    font-weight: var(--font-medium);
     color: var(--text-tertiary);
     margin-left: var(--space-2);
-    letter-spacing: 0.05em;
+    letter-spacing: var(--tracking-wider);
   }
 
   .preview-card {
@@ -396,6 +404,16 @@
     border-radius: var(--radius-lg);
     border: 1px solid var(--border);
     padding: var(--space-4);
+    position: relative;
+  }
+
+  .preview-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: var(--gradient-card);
+    pointer-events: none;
   }
 
   .preview-row {
@@ -403,6 +421,7 @@
     justify-content: space-between;
     align-items: flex-start;
     padding: var(--space-2) 0;
+    position: relative;
   }
 
   .preview-row.total {
@@ -411,27 +430,27 @@
 
   .preview-row.total .preview-label,
   .preview-row.total .preview-value {
-    font-weight: var(--weight-semibold);
+    font-weight: var(--font-semibold);
   }
 
   .preview-label {
-    font-size: var(--text-small);
+    font-size: var(--text-xs);
     color: var(--text-secondary);
-    letter-spacing: 0.01em;
+    letter-spacing: var(--tracking-wide);
   }
 
   .preview-value {
-    font-size: var(--text-small);
+    font-size: var(--text-xs);
     color: var(--text-primary);
     text-align: right;
     max-width: 60%;
     word-break: break-all;
-    letter-spacing: 0.01em;
+    letter-spacing: var(--tracking-wide);
   }
 
   .preview-value.mono {
     font-family: var(--font-mono);
-    font-size: var(--text-caption);
+    font-size: var(--text-2xs);
   }
 
   .preview-value.secondary {
@@ -459,12 +478,13 @@
     padding: var(--space-16) var(--space-4);
     gap: var(--space-4);
     min-height: 60vh;
+    animation: fadeIn var(--duration-normal) var(--ease-out);
   }
 
   .status-icon {
     width: 72px;
     height: 72px;
-    border-radius: 50%;
+    border-radius: var(--radius-full);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -482,45 +502,47 @@
   }
 
   .status-icon.success {
-    background: var(--receive-dim);
-    border: 1px solid rgba(74, 222, 128, 0.2);
+    background: var(--receive-muted);
+    border: 1px solid rgba(52, 211, 153, 0.2);
     color: var(--receive);
+    animation: scaleIn var(--duration-normal) var(--ease-spring);
   }
 
   .status-icon.error {
-    background: var(--error-dim);
+    background: var(--error-muted);
     border: 1px solid rgba(239, 68, 68, 0.2);
     color: var(--error);
+    animation: scaleIn var(--duration-normal) var(--ease-spring);
   }
 
   .status-phase h2 {
-    font-size: var(--text-h2);
-    font-weight: var(--weight-semibold);
+    font-size: var(--text-xl);
+    font-weight: var(--font-semibold);
     color: var(--text-primary);
     letter-spacing: var(--tracking-tight);
   }
 
   .status-phase p {
     color: var(--text-tertiary);
-    font-size: var(--text-small);
+    font-size: var(--text-xs);
     max-width: 260px;
     line-height: var(--leading-relaxed);
   }
 
   .txid-badge {
     font-family: var(--font-mono);
-    font-size: var(--text-caption);
+    font-size: var(--text-2xs);
     color: var(--text-tertiary);
     background: var(--bg-card);
     padding: var(--space-2) var(--space-4);
     border-radius: var(--radius-md);
     border: 1px solid var(--border);
-    letter-spacing: 0.02em;
+    letter-spacing: var(--tracking-wide);
   }
 
   .error-text {
     color: var(--text-secondary);
-    font-size: var(--text-small);
+    font-size: var(--text-xs);
     max-width: 280px;
   }
 </style>
