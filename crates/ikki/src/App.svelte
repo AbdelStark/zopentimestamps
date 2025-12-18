@@ -12,6 +12,7 @@
   import Settings from "./routes/Settings.svelte";
   import Contacts from "./routes/Contacts.svelte";
   import Onboarding from "./routes/Onboarding.svelte";
+  import TransactionDetail from "./routes/TransactionDetail.svelte";
 
   // Components
   import BottomNav from "./lib/components/BottomNav.svelte";
@@ -76,6 +77,8 @@
         <Settings />
       {:else if $currentView === "contacts"}
         <Contacts />
+      {:else if $currentView === "transaction-detail"}
+        <TransactionDetail />
       {/if}
     </div>
     <BottomNav />

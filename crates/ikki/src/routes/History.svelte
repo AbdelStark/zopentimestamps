@@ -117,6 +117,7 @@
                   address={tx.address}
                   memo={tx.memo}
                   status={tx.status}
+                  confirmations={tx.confirmations}
                 />
               {/each}
             </div>

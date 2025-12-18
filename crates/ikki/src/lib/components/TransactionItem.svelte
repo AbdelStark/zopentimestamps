@@ -1,6 +1,9 @@
 <script lang="ts">
-  import { ArrowUpRight, ArrowDownLeft, Layers, RefreshCw } from "lucide-svelte";
+  import { ArrowUpRight, ArrowDownLeft, Layers, RefreshCw, ChevronRight } from "lucide-svelte";
   import { formatZec, truncateAddress, formatRelativeTime } from "../utils/format";
+  import { transaction } from "../stores/transaction";
+  import { ui } from "../stores/ui";
+  import type { Transaction } from "../utils/tauri";
 
   export let txid: string;
   export let txType: "sent" | "received" | "shielding" | "internal";
@@ -9,6 +12,7 @@
   export let address: string | null = null;
   export let memo: string | null = null;
   export let status: "pending" | "confirmed" | "failed" = "confirmed";
+  export let confirmations: number = 0;
 
   const labels = {
     sent: "Sent",
@@ -36,11 +40,23 @@
 
   $: IconComponent = icons[txType];
 
-  // Silence unused warning
-  $: void txid;
+  function handleClick() {
+    const tx: Transaction = {
+      txid,
+      tx_type: txType,
+      amount,
+      timestamp,
+      address,
+      memo,
+      status,
+      confirmations,
+    };
+    transaction.select(tx);
+    ui.navigate("transaction-detail");
+  }
 </script>
 
-<button class="transaction-item" class:pending={status === "pending"}>
+<button class="transaction-item" class:pending={status === "pending"} onclick={handleClick}>
   <div class="tx-icon" class:outgoing={isOutgoing} class:incoming={!isOutgoing}>
     <svelte:component this={IconComponent} size={15} strokeWidth={2} />
   </div>
@@ -63,6 +79,10 @@
     </span>
     <span class="tx-unit">ZEC</span>
   </div>
+
+  <div class="tx-chevron">
+    <ChevronRight size={14} strokeWidth={2} />
+  </div>
 </button>
 
 <style>
@@ -83,25 +103,8 @@
     position: relative;
   }
 
-  .transaction-item::after {
-    content: '';
-    position: absolute;
-    right: var(--space-4);
-    top: 50%;
-    transform: translateY(-50%);
-    width: 4px;
-    height: 4px;
-    border-radius: var(--radius-full);
-    background: transparent;
-    transition: background var(--duration-fast) var(--ease-out);
-  }
-
   .transaction-item:hover {
     background: var(--bg-hover);
-  }
-
-  .transaction-item:hover::after {
-    background: var(--border-emphasis);
   }
 
   .transaction-item:active {
@@ -217,5 +220,16 @@
     font-weight: var(--font-medium);
     color: var(--text-tertiary);
     letter-spacing: var(--tracking-wide);
+  }
+
+  .tx-chevron {
+    color: var(--text-tertiary);
+    opacity: 0;
+    transition: opacity var(--duration-fast) var(--ease-out);
+    margin-left: var(--space-2);
+  }
+
+  .transaction-item:hover .tx-chevron {
+    opacity: 0.6;
   }
 </style>
