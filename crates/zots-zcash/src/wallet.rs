@@ -415,19 +415,22 @@ impl ZotsWallet {
             account_id
         );
 
-        // Check balance
+        // Check balance - iterate over all account balances (consistent with get_balance_breakdown)
         let summary = self.db.get_wallet_summary(ConfirmationsPolicy::MIN)?;
-        let (transparent_balance, orchard_balance, sapling_balance) = summary
-            .as_ref()
-            .and_then(|s| s.account_balances().get(account_id))
-            .map(|b| {
-                (
-                    u64::from(b.unshielded_balance().spendable_value()),
-                    u64::from(b.orchard_balance().spendable_value()),
-                    u64::from(b.sapling_balance().spendable_value()),
-                )
-            })
-            .unwrap_or((0, 0, 0));
+        let (transparent_balance, orchard_balance, sapling_balance) = match &summary {
+            Some(s) => {
+                let mut transparent = 0u64;
+                let mut orchard = 0u64;
+                let mut sapling = 0u64;
+                for balance in s.account_balances().values() {
+                    transparent += u64::from(balance.unshielded_balance().spendable_value());
+                    orchard += u64::from(balance.orchard_balance().spendable_value());
+                    sapling += u64::from(balance.sapling_balance().spendable_value());
+                }
+                (transparent, orchard, sapling)
+            }
+            None => (0, 0, 0),
+        };
 
         let total_shielded = orchard_balance + sapling_balance;
         let min_required = 20000u64; // ZIP-317 minimum fee
@@ -572,18 +575,20 @@ impl ZotsWallet {
             amount_zatoshi, to_address, account_id
         );
 
-        // Check balance
+        // Check balance - iterate over all account balances (consistent with get_balance_breakdown)
         let summary = self.db.get_wallet_summary(ConfirmationsPolicy::MIN)?;
-        let (orchard_balance, sapling_balance) = summary
-            .as_ref()
-            .and_then(|s| s.account_balances().get(account_id))
-            .map(|b| {
-                (
-                    u64::from(b.orchard_balance().spendable_value()),
-                    u64::from(b.sapling_balance().spendable_value()),
-                )
-            })
-            .unwrap_or((0, 0));
+        let (orchard_balance, sapling_balance) = match &summary {
+            Some(s) => {
+                let mut orchard = 0u64;
+                let mut sapling = 0u64;
+                for balance in s.account_balances().values() {
+                    orchard += u64::from(balance.orchard_balance().spendable_value());
+                    sapling += u64::from(balance.sapling_balance().spendable_value());
+                }
+                (orchard, sapling)
+            }
+            None => (0, 0),
+        };
 
         let total_shielded = orchard_balance + sapling_balance;
         let min_required = amount_zatoshi + 20000; // amount + ZIP-317 fee estimate
