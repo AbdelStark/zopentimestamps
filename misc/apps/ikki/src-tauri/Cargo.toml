@@ -78,4 +78,4 @@ chrono = "0.4"
 nonempty = "0.11"
 
 [build-dependencies]
-tauri-build = "2.0"
+tauri-build = { version = "2.0", features = [] }

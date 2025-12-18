@@ -1,6 +1,6 @@
 <h1 align="center">
   <br>
-  <img src="https://raw.githubusercontent.com/AbdelStark/zopentimestamps/main/misc/apps/ikki/public/ikki-logo.svg" alt="Ikki" width="120">
+  <img src="public/ikki-logo.png" alt="Ikki" width="120">
   <br>
   Ikki
   <br>
