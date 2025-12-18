@@ -1,13 +1,16 @@
 <script lang="ts">
-  import { Copy, Check, RefreshCw, Shield } from "lucide-svelte";
+  import { Copy, Check, RefreshCw, Shield, Shuffle } from "lucide-svelte";
   import { ui } from "../stores/ui";
+  import { wallet } from "../stores/wallet";
   import { formatZec, truncateAddress, copyToClipboard } from "../utils/format";
+  import { getNewAddress } from "../utils/tauri";
 
   export let balance: number = 0;
   export let address: string = "";
   export let syncing: boolean = false;
 
   let copied = false;
+  let shuffling = false;
 
   async function handleCopy() {
     const success = await copyToClipboard(address);
@@ -15,6 +18,20 @@
       copied = true;
       ui.showToast("Address copied", "success");
       setTimeout(() => (copied = false), 2000);
+    }
+  }
+
+  async function handleShuffle() {
+    if (shuffling) return;
+    shuffling = true;
+    try {
+      const newAddress = await getNewAddress();
+      wallet.setAddress(newAddress);
+      ui.showToast("New address generated", "success");
+    } catch (e) {
+      ui.showToast("Failed to generate address", "error");
+    } finally {
+      shuffling = false;
     }
   }
 
@@ -45,16 +62,26 @@
       <span class="balance-unit">ZEC</span>
     </div>
 
-    <button class="address-btn" onclick={handleCopy} class:copied>
-      <span class="address-text">{truncateAddress(address, 10)}</span>
-      <div class="address-icon">
-        {#if copied}
-          <Check size={12} strokeWidth={2.5} />
-        {:else}
-          <Copy size={12} strokeWidth={2} />
-        {/if}
-      </div>
-    </button>
+    <div class="address-row">
+      <button class="address-btn" onclick={handleCopy} class:copied>
+        <span class="address-text">{truncateAddress(address, 10)}</span>
+        <div class="address-icon">
+          {#if copied}
+            <Check size={12} strokeWidth={2.5} />
+          {:else}
+            <Copy size={12} strokeWidth={2} />
+          {/if}
+        </div>
+      </button>
+      <button
+        class="shuffle-btn"
+        onclick={handleShuffle}
+        disabled={shuffling}
+        title="Generate new address"
+      >
+        <Shuffle size={14} strokeWidth={2} class={shuffling ? "shuffling" : ""} />
+      </button>
+    </div>
   </div>
 </div>
 
@@ -172,11 +199,16 @@
     letter-spacing: var(--tracking-wider);
   }
 
+  .address-row {
+    display: flex;
+    gap: var(--space-2);
+  }
+
   .address-btn {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    width: 100%;
+    flex: 1;
     padding: var(--space-3) var(--space-4);
     background: rgba(0, 0, 0, 0.25);
     border: 1px solid var(--border);
@@ -195,6 +227,44 @@
 
   .address-btn.copied {
     border-color: var(--success);
+  }
+
+  .shuffle-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--text-tertiary);
+    transition: all var(--duration-fast) var(--ease-out);
+    flex-shrink: 0;
+  }
+
+  .shuffle-btn:hover:not(:disabled) {
+    background: rgba(0, 0, 0, 0.35);
+    border-color: var(--border-emphasis);
+    color: var(--text-secondary);
+  }
+
+  .shuffle-btn:active:not(:disabled) {
+    transform: scale(0.95);
+  }
+
+  .shuffle-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .shuffle-btn :global(.shuffling) {
+    animation: shuffle 0.5s ease-in-out infinite;
+  }
+
+  @keyframes shuffle {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-2px); }
+    75% { transform: translateX(2px); }
   }
 
   .address-text {

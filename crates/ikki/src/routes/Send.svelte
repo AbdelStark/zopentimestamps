@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { ArrowLeft, Check, Loader2 } from "lucide-svelte";
+  import { onMount } from "svelte";
+  import { ArrowLeft, Check, Loader2, Users } from "lucide-svelte";
   import { send, sendPhase, sendAmount, sendAddress, sendMemo, sendTxid, sendError, canProceed } from "../lib/stores/send";
   import { balance } from "../lib/stores/wallet";
   import { ui } from "../lib/stores/ui";
@@ -9,6 +10,22 @@
   import Input from "../lib/components/Input.svelte";
 
   const FEE = 10000; // 0.0001 ZEC in zatoshis
+  let selectedContactName: string | null = null;
+
+  onMount(() => {
+    // Check for selected contact from contacts view
+    const stored = sessionStorage.getItem("selected_recipient");
+    if (stored) {
+      try {
+        const contact = JSON.parse(stored);
+        send.setAddress(contact.address);
+        selectedContactName = contact.name;
+        sessionStorage.removeItem("selected_recipient");
+      } catch {
+        // Invalid data, ignore
+      }
+    }
+  });
 
   function handleAmountInput(e: Event) {
     const target = e.target as HTMLInputElement;
@@ -102,12 +119,26 @@
             <button class="max-button" onclick={setMaxAmount}>MAX</button>
           </div>
 
-          <Input
-            label="Recipient Address"
-            placeholder="Enter Zcash address"
-            value={$sendAddress}
-            oninput={handleAddressInput}
-          />
+          <div class="address-section">
+            <div class="address-header">
+              <span class="address-label">Recipient Address</span>
+              <button class="contacts-link" onclick={() => ui.navigate("contacts")}>
+                <Users size={14} />
+                Contacts
+              </button>
+            </div>
+            {#if selectedContactName}
+              <div class="selected-contact">
+                <Users size={12} />
+                <span>{selectedContactName}</span>
+              </div>
+            {/if}
+            <Input
+              placeholder="Enter Zcash address"
+              value={$sendAddress}
+              oninput={handleAddressInput}
+            />
+          </div>
 
           <Input
             label="Memo (optional)"
@@ -319,6 +350,61 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-5);
+  }
+
+  .address-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .address-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .address-label {
+    font-size: var(--text-xs);
+    font-weight: var(--font-medium);
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-wider);
+  }
+
+  .contacts-link {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: var(--space-1) var(--space-2);
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: var(--text-2xs);
+    font-weight: var(--font-medium);
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    transition:
+      color var(--duration-fast) var(--ease-out),
+      background var(--duration-fast) var(--ease-out);
+  }
+
+  .contacts-link:hover {
+    color: var(--text-primary);
+    background: var(--bg-hover);
+  }
+
+  .selected-contact {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    background: var(--bg-elevated);
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    font-size: var(--text-2xs);
+    font-weight: var(--font-medium);
+    border: 1px solid var(--border);
   }
 
   .amount-input-wrapper {

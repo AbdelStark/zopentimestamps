@@ -80,6 +80,14 @@ export async function getAddress(): Promise<string> {
   return invoke<string>("get_address");
 }
 
+export async function getNewAddress(): Promise<string> {
+  return invoke<string>("get_new_address");
+}
+
+export async function getAllAddresses(): Promise<string[]> {
+  return invoke<string[]>("get_all_addresses");
+}
+
 export async function syncWallet(): Promise<SyncResult> {
   return invoke<SyncResult>("sync_wallet");
 }

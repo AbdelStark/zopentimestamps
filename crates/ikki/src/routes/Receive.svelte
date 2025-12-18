@@ -1,11 +1,13 @@
 <script lang="ts">
-  import { ArrowLeft, Copy, Check, Share2, Shield } from "lucide-svelte";
-  import { address } from "../lib/stores/wallet";
+  import { ArrowLeft, Copy, Check, Share2, Shield, RefreshCw } from "lucide-svelte";
+  import { address, wallet } from "../lib/stores/wallet";
   import { ui } from "../lib/stores/ui";
   import { copyToClipboard } from "../lib/utils/format";
+  import { getNewAddress } from "../lib/utils/tauri";
   import Button from "../lib/components/Button.svelte";
 
   let copied = false;
+  let generating = false;
 
   async function handleCopy() {
     const success = await copyToClipboard($address);
@@ -30,6 +32,20 @@
       }
     } else {
       handleCopy();
+    }
+  }
+
+  async function handleNewAddress() {
+    if (generating) return;
+    generating = true;
+    try {
+      const newAddress = await getNewAddress();
+      wallet.setAddress(newAddress);
+      ui.showToast("New address generated", "success");
+    } catch (e) {
+      ui.showToast("Failed to generate address", "error");
+    } finally {
+      generating = false;
     }
   }
 
@@ -81,10 +97,16 @@
           Copy Address
         {/if}
       </Button>
-      <Button variant="secondary" size="lg" fullWidth onclick={handleShare}>
-        <Share2 size={16} strokeWidth={2} />
-        Share
-      </Button>
+      <div class="actions-row">
+        <Button variant="secondary" size="lg" fullWidth onclick={handleShare}>
+          <Share2 size={16} strokeWidth={2} />
+          Share
+        </Button>
+        <Button variant="secondary" size="lg" fullWidth onclick={handleNewAddress} disabled={generating}>
+          <RefreshCw size={16} strokeWidth={2} class={generating ? "spinning" : ""} />
+          {generating ? "Generating..." : "New Address"}
+        </Button>
+      </div>
     </div>
 
     <div class="info-section">
@@ -258,6 +280,24 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
+  }
+
+  .actions-row {
+    display: flex;
+    gap: var(--space-3);
+  }
+
+  .actions-row > :global(*) {
+    flex: 1;
+  }
+
+  :global(.spinning) {
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
   }
 
   .info-section {

@@ -1,6 +1,6 @@
 import { writable, derived } from "svelte/store";
 
-export type View = "home" | "send" | "receive" | "history" | "settings";
+export type View = "home" | "send" | "receive" | "history" | "settings" | "contacts";
 
 export type ToastType = "success" | "error" | "warning" | "info";
 

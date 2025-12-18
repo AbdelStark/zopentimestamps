@@ -320,6 +320,28 @@ pub async fn get_address(state: State<'_, AppState>) -> Result<String, String> {
         .map_err(|e| format!("Failed to get address: {e}"))
 }
 
+/// Generate a new diversified address
+#[tauri::command]
+pub async fn get_new_address(state: State<'_, AppState>) -> Result<String, String> {
+    let mut wallet_lock = state.wallet.lock().await;
+    let wallet = wallet_lock.as_mut().ok_or("Wallet not initialized")?;
+
+    wallet
+        .get_new_address()
+        .map_err(|e| format!("Failed to generate new address: {e}"))
+}
+
+/// Get all wallet addresses
+#[tauri::command]
+pub async fn get_all_addresses(state: State<'_, AppState>) -> Result<Vec<String>, String> {
+    let wallet_lock = state.wallet.lock().await;
+    let wallet = wallet_lock.as_ref().ok_or("Wallet not initialized")?;
+
+    wallet
+        .get_all_addresses()
+        .map_err(|e| format!("Failed to get addresses: {e}"))
+}
+
 /// Sync wallet with blockchain
 #[tauri::command]
 pub async fn sync_wallet(state: State<'_, AppState>) -> Result<SyncResult, String> {

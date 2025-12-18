@@ -28,6 +28,8 @@ pub fn run() {
             commands::wallet::reset_wallet,
             commands::wallet::get_balance,
             commands::wallet::get_address,
+            commands::wallet::get_new_address,
+            commands::wallet::get_all_addresses,
             commands::wallet::sync_wallet,
             commands::wallet::generate_seed,
             // Transaction commands

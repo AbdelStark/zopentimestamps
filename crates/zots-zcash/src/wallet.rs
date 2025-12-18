@@ -315,6 +315,48 @@ impl ZotsWallet {
         Ok(address.to_zcash_address(&TEST_NETWORK).to_string())
     }
 
+    /// Generate a new diversified receiving address
+    ///
+    /// Creates a new unlinkable address derived from the same key.
+    /// All diversified addresses route to the same wallet.
+    pub fn get_new_address(&mut self) -> anyhow::Result<String> {
+        use zcash_keys::keys::{ReceiverRequirement, UnifiedAddressRequest};
+        use zcash_protocol::consensus::NetworkType;
+
+        let accounts = self.db.get_account_ids()?;
+        let account_id = accounts
+            .first()
+            .ok_or_else(|| anyhow::anyhow!("No account found - run init_account first"))?;
+
+        // Request a new unified address with Orchard and Sapling receivers (no transparent)
+        let request = UnifiedAddressRequest::unsafe_custom(
+            ReceiverRequirement::Require,
+            ReceiverRequirement::Require,
+            ReceiverRequirement::Omit,
+        );
+        let (address, _diversifier_index) = self
+            .db
+            .get_next_available_address(*account_id, request)?
+            .ok_or_else(|| anyhow::anyhow!("Failed to generate new address"))?;
+
+        Ok(address.to_zcash_address(NetworkType::Test).to_string())
+    }
+
+    /// Get all addresses for the wallet
+    pub fn get_all_addresses(&self) -> anyhow::Result<Vec<String>> {
+        let accounts = self.db.get_account_ids()?;
+        let account_id = accounts
+            .first()
+            .ok_or_else(|| anyhow::anyhow!("No account found - run init_account first"))?;
+
+        let addresses = self.db.list_addresses(*account_id)?;
+
+        Ok(addresses
+            .iter()
+            .map(|addr| addr.address().to_zcash_address(&TEST_NETWORK).to_string())
+            .collect())
+    }
+
     /// Shield transparent funds to Orchard
     ///
     /// Moves funds from transparent pool to shielded Orchard pool.

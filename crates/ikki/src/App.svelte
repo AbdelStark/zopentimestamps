@@ -10,6 +10,7 @@
   import Receive from "./routes/Receive.svelte";
   import History from "./routes/History.svelte";
   import Settings from "./routes/Settings.svelte";
+  import Contacts from "./routes/Contacts.svelte";
   import Onboarding from "./routes/Onboarding.svelte";
 
   // Components
@@ -69,6 +70,8 @@
         <History />
       {:else if $currentView === "settings"}
         <Settings />
+      {:else if $currentView === "contacts"}
+        <Contacts />
       {/if}
     </div>
     <BottomNav />

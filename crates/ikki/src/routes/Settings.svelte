@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { RefreshCw, Eye, EyeOff, ExternalLink, Trash2, Loader2, ArrowLeft, Check } from "lucide-svelte";
+  import { RefreshCw, Eye, EyeOff, ExternalLink, Trash2, Loader2, ArrowLeft, Check, Users, ChevronRight } from "lucide-svelte";
   import { wallet, isSyncing } from "../lib/stores/wallet";
   import { ui } from "../lib/stores/ui";
   import { syncWallet, resetWallet, loadWallet } from "../lib/utils/tauri";
@@ -244,6 +244,20 @@
     </header>
 
     <div class="settings-content">
+      <!-- Contacts Section -->
+      <section class="settings-section">
+        <h2 class="section-title">Contacts</h2>
+        <div class="settings-card">
+          <button class="setting-item clickable" onclick={() => ui.navigate("contacts")}>
+            <div class="setting-info">
+              <span class="setting-label">Manage Contacts</span>
+              <span class="setting-description">Save addresses for quick sending</span>
+            </div>
+            <ChevronRight size={16} />
+          </button>
+        </div>
+      </section>
+
       <!-- Network Section -->
       <section class="settings-section">
         <h2 class="section-title">Network</h2>

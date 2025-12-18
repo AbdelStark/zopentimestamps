@@ -49,6 +49,11 @@ function createWalletStore() {
           transparent: 0,
         },
       })),
+    setAddress: (address: string) =>
+      update((s) => ({
+        ...s,
+        info: s.info ? { ...s.info, address } : null,
+      })),
     updateBalance: (balance: BalanceInfo) => update((s) => ({ ...s, balance })),
     reset: () => set(initialState),
   };
