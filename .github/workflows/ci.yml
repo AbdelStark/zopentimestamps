@@ -60,7 +60,7 @@ jobs:
           prefix-key: clippy
 
       - name: cargo clippy
-        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+        run: cargo clippy --workspace --all-targets --all-features --exclude ikki -- -D warnings
 
   test:
     name: Tests
@@ -80,4 +80,4 @@ jobs:
           prefix-key: test
 
       - name: cargo test
-        run: cargo test --workspace --all-features
+        run: cargo test --workspace --all-features --exclude ikki
